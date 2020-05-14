@@ -18,8 +18,8 @@ def main():
 
     #USARE LE SPUNTE QUANDO SONO PRESENTI PIU PERSONE PER RIGA
 
-    pathToImages = "D:/Cose_Uni/Magistrale/Anno_1/secondo_semestre/computer_vision/re-identification/DATASET/gennaio/2020-01-10_clean"
-    pathToResults = "C:/Users/LorCat/PycharmProjects/ProvaAnnotatore/Febbraio/PROVA"
+    pathToImages = "C:/Users/Daniele/Downloads/UnivPm/Magistrale/1 anno/Computer Vision & Deep Learning/Progetto/dataset/gennaio/2020-01-21_clean"
+    pathToResults = "C:/Users/Daniele/Desktop/label/21-01.csv"
     numOfFolder = 200
     min_images = 0
     start_time = 0
