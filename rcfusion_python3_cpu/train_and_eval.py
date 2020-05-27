@@ -51,7 +51,7 @@ tensorboard_log = '/tmp/tensorflow/'
 
 # Solver params
 learning_rate = [[0.0001]]
-num_epochs = 40 #50
+num_epochs = 50 #50
 batch_size = [[32]]
 num_neurons = [[100]]
 l2_factor = [[0.0]]
@@ -67,7 +67,7 @@ if not os.path.isdir(checkpoint_dir): os.mkdir(checkpoint_dir)
 
 # Input/Output
 num_classes = 49
-img_size = [200, 200]
+img_size = [224, 224]
 num_channels = 3
 
 
