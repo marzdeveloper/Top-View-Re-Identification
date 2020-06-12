@@ -380,7 +380,7 @@ for hp in set_params:
         sigm_reg = 1.0
         reg_values = [sigm_reg, 0.0]
         decayed_reg = tf.train.piecewise_constant(global_step, lr_boundaries, reg_values)
-        # recompute_reg = tf.assign(reg, sigm_reg)
+        recompute_reg = tf.assign(reg, sigm_reg)
 
         reg_lambda = [0.0 * decayed_reg, 0.0 * decayed_reg, 1e-6 * decayed_reg, 1e-5 * decayed_reg, 1e-5 * decayed_reg,
                       1e-4 * decayed_reg, 1e-4 * decayed_reg, 0.0 * decayed_reg, 0.0 * decayed_reg]
@@ -397,10 +397,15 @@ for hp in set_params:
         train_step_conv1x1 = tf.keras.optimizers.RMSprop(lr=decayed_lr * lr_mult_conv1x1).get_updates(loss=loss,
                                                                                                       params=trainable_variables_conv1x1)
 
+        train_step_rgb = tf.keras.optimizers.RMSprop(lr=decayed_lr * lr_mult_conv1x1).get_updates(loss=loss,
+                                                                                                      params=trainable_variables_rgb)
+
+        train_step_depth= tf.keras.optimizers.RMSprop(lr=decayed_lr * lr_mult_conv1x1).get_updates(loss=loss,
+                                                                                                      params=trainable_variables_depth)
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
-            train_step = tf.group(train_step_rnn, train_step_conv1x1, increment_global_step)
-            # train_step = tf.group(train_step_rnn, train_step_conv1x1, train_step_rgb, train_step_depth, increment_global_step, recompute_reg)
+            #train_step = tf.group(train_step_rnn, train_step_conv1x1, increment_global_step)
+            train_step = tf.group(train_step_rnn, train_step_conv1x1, train_step_rgb, train_step_depth, increment_global_step, recompute_reg)
         accuracy = tf.reduce_mean(categorical_accuracy(y, preds))
 
         # Create summaries for Tensorboard
