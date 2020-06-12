@@ -72,8 +72,8 @@ class ResNet(object):
         print("\nCopying ({}) parameters of layer...".format(s))
 
         # Loop over the stored layers
-        for layer in params:
-
+        for layer in params.keys():
+            print(layer)
             # Not in the layers to re-train from scratch
             with tf.variable_scope(self.mode + "/" + layer, reuse=True):
                 # with tf.variable_scope(layer, reuse=True):
@@ -97,12 +97,15 @@ class ResNet(object):
 
                 else:
                     # Load weights
-                    var = tf.get_variable('weights', trainable=trainable)
-                    sess.run(var.assign(params[layer]['weights']))
-                    try:
-                        var = tf.get_variable('biases', trainable=trainable)
-                        sess.run(var.assign(params[layer]['biases']))
-                    except:
-                        print("{} (bias term = False)".format(layer))
+                    if layer[:6] == 'fc1000':
+                        sess.run(tf.get_variable('weights', initializer=tf.contrib.layers.xavier_initializer(), trainable=trainable))
+                    else:
+                        var = tf.get_variable('weights', trainable=trainable)
+                        sess.run(var.assign(params[layer]['weights']))
+                        try:
+                            var = tf.get_variable('biases', trainable=trainable)
+                            sess.run(var.assign(params[layer]['biases']))
+                        except:
+                            print("{} (bias term = False)".format(layer))
 
         return params

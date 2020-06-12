@@ -265,8 +265,8 @@ def fc(x, num_in, num_out, name, activation=True, do_prob=1.0):
     with tf.variable_scope(name) as scope:
 
         # Create tf variables for the weights and biases
-        W = tf.get_variable('weights', shape=[num_in, num_out], trainable=True)
-        b = tf.get_variable('biases', [num_out], trainable=True)
+        W = tf.get_variable('weights', shape=[num_in, num_out], trainable=False)
+        b = tf.get_variable('biases', [num_out], trainable=False)
 
         # Matrix multiply weights and inputs and add bias
         h = tf.nn.xw_plus_b(x, W, b, name=scope.name)

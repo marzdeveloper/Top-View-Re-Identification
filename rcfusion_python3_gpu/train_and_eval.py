@@ -1,9 +1,9 @@
 import os
-import os
 import sys
 import shutil
 import random
 import scipy
+import tensorflow as tf
 from datetime import datetime
 import progressbar
 from image_data_handler_joint_multimodal import ImageDataHandler
@@ -24,7 +24,9 @@ from keras import backend as K
 
 from tensorflow.python.client import device_lib
 
-
+import matplotlib.pyplot as plt     #serve ?
+from tensorflow.python.keras.callbacks import TensorBoard
+import cv2
 
 
 
@@ -67,7 +69,7 @@ checkpoint_dir = "C:/Users/Daniele/Desktop/50_id/mese/"
 if not os.path.isdir(checkpoint_dir): os.mkdir(checkpoint_dir)
 
 # Input/Output
-num_classes = 49
+num_classes = 99
 img_size = [224, 224]
 num_channels = 3
 
@@ -345,8 +347,8 @@ for hp in set_params:
         # Define trainable variables
         trainable_variables_rnn = [v for v in tf.trainable_variables(scope="rnn")]
         trainable_variables_conv1x1 = [v for v in tf.trainable_variables(scope="conv1x1")]
-        # trainable_variables_rgb = [v for v in tf.trainable_variables(scope="rgb")]
-        # trainable_variables_depth = [v for v in tf.trainable_variables(scope="depth")]
+        trainable_variables_rgb = [v for v in tf.trainable_variables(scope="rgb")]
+        trainable_variables_depth = [v for v in tf.trainable_variables(scope="depth")]
 
         # Define the training and validation opsi
         global_step = tf.Variable(0, trainable=False)
@@ -418,14 +420,15 @@ for hp in set_params:
         sess.run(tf.global_variables_initializer())
 
         # Load the pretrained weights into the non-trainable layer
-        model_rgb.load_params(sess, params_dir_rgb, trainable=False)
-        model_depth.load_params(sess, params_dir_depth, trainable=False)
+        model_rgb.load_params(sess, params_dir_rgb, trainable=True)
+        model_depth.load_params(sess, params_dir_depth, trainable=True)
 
         print(
             "\nHyper-parameters: lr={}, #neurons={}, bs={}, l2={}, max_norm={}, dropout_rate={}".format(lr, nn, bs, aa,
                                                                                                         mn, do))
         print("Number of trainable parameters = {}".format(
-            count_params(trainable_variables_rnn) + count_params(trainable_variables_conv1x1)))
+            count_params(trainable_variables_rnn) + count_params(trainable_variables_conv1x1) +
+            count_params(trainable_variables_rgb) + count_params(trainable_variables_depth)))
 
         print("\n{} Generate features from training set".format(datetime.now()))
 
@@ -496,6 +499,7 @@ for hp in set_params:
                                           widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
             bar.start()
             train_loss = 0
+
             for i in range(tr_batches_per_epoch):
                 bar.update(i + 1)
                 tb_train_count += 1
@@ -550,5 +554,6 @@ for hp in set_params:
                 print("Training stopped due to poor results or divergence: validation loss = {}".format(val_acc))
                 break
 
-    tf.reset_default_graph()
-    shutil.rmtree(tensorboard_log)
+    #tf.reset_default_graph()
+    #shutil.rmtree(tensorboard_log)
+    #tensorboard --logdir=/tmp/tensorflow/
