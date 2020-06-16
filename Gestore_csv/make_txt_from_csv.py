@@ -18,7 +18,6 @@ csvwriter = csv.writer(out_file, delimiter=";")
 
 for row in csvreader:
     if (len(row) - 3) > (min - 1):
-        count = count + 1
         first_row = []
         first_row.append(row[0])
         new_row = []
@@ -30,12 +29,13 @@ for row in csvreader:
         else:
             max_foto = (len(row) - 3)
         for i, item in enumerate(row):
-            if i in range (3, max_foto + 3):
+            if i in range(3, max_foto + 3):
                 new_row.append(item)
                 if (i - 2) > int(0.8*max_foto):
-                    test_file.write(row[0] + '/' + item.strip('_rgb.png') + ' ' + row[1] + '\n')
+                    test_file.write(row[0] + '/' + item.strip('_rgb.png') + ' ' + str(count) + '\n')
                 else:
-                    train_file.write(row[0] + '/' + item.strip('_rgb.png') + ' ' + row[1] + '\n')
+                    train_file.write(row[0] + '/' + item.strip('_rgb.png') + ' ' + str(count) + '\n')
+        count += 1
         csvwriter.writerow(new_row)
 #out_file_first_row = open(csv_dest_path.strip('.csv') + "_FIRST_ROW.txt", "w", newline='')
 #out_file_first_row.write(first_row[0])
