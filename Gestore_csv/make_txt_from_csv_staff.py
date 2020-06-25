@@ -41,11 +41,11 @@ for row in csvreader:
             for i, photo in enumerate(apache):
                 people_train.append(int(original))
                 if i < int(0.7*max):#max o max_foto ?
-                    train_file.write(directory + '/' + photo.strip('_rgb.png') + ' ' + str(count) + '\n')
+                    train_file.write(original + '/' + photo.strip('_rgb.png') + ' ' + str(count) + '\n')
                 elif i >= int(0.9*max):
-                    test_file.write(directory + '/' + photo.strip('_rgb.png') + ' ' + str(count) + '\n')
+                    test_file.write(original + '/' + photo.strip('_rgb.png') + ' ' + str(count) + '\n')
                 else:
-                    val_file.write(directory + '/' + photo.strip('_rgb.png') + ' ' + str(count) + '\n')
+                    val_file.write(original + '/' + photo.strip('_rgb.png') + ' ' + str(count) + '\n')
             count += 1
         if count == max_id_train:
             break
@@ -67,9 +67,9 @@ for row in csvreader:
             for i, photo in enumerate(apache):
                 staff_train.append(int(original))
                 if i < int(0.8*max):#max o max_foto ?
-                    train_file.write(directory + '/' + photo.strip('_rgb.png') + ' ' + str(count) + '\n')
+                    train_file.write(original + '/' + photo.strip('_rgb.png') + ' ' + str(count) + '\n')
                 else:
-                    val_file.write(directory + '/' + photo.strip('_rgb.png') + ' ' + str(count) + '\n')
+                    val_file.write(original + '/' + photo.strip('_rgb.png') + ' ' + str(count) + '\n')
             staff_dict[directory] = count
             staff.remove(int(directory))
             count += 1
@@ -96,7 +96,7 @@ for row in csvreader:
             row = row[3:]
             apache = random.sample(row, min)
             for photo in apache:
-                test_file.write(directory + '/' + photo.strip('_rgb.png') + ' ' + str(count) + '\n')                #mette nel test la gente normale
+                test_file.write(original + '/' + photo.strip('_rgb.png') + ' ' + str(count) + '\n')                #mette nel test la gente normale
             count += 1
         if count == max_id_test:
             break
@@ -118,7 +118,7 @@ for row in csvreader:
                 row = row[3:]
                 apache = random.sample(row, min)
                 for photo in apache:
-                    test_file.write(directory + '/' + photo.strip('_rgb.png') + ' ' + str(staff_dict[directory]) + '\n')            #mette nel test lo staff in giorni diversi dal training
+                    test_file.write(original + '/' + photo.strip('_rgb.png') + ' ' + str(staff_dict[directory]) + '\n')            #mette nel test lo staff in giorni diversi dal training
                 staff.remove(int(directory))
 
 
