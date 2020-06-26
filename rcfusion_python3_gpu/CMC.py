@@ -41,6 +41,7 @@ class CMC:
             method_name.append(globals()[name])
 
         plt.legend(handles=method_name)
+        fig.savefig("CMC.png")
         plt.show()
     
     def save(self, title, filename, 
