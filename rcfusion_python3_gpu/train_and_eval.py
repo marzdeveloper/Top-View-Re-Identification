@@ -10,9 +10,9 @@ from image_data_handler_joint_multimodal import ImageDataHandler
 from resnet18 import ResNet
 from layer_blocks import *
 from tensorflow.data import Iterator
-from utils import flat_shape, count_params
+from utils import *
 import pickle as pickle
-#numpy 1.16.1 ALLOW PICKLE=TRUE di default
+# numpy 1.16.1 ALLOW PICKLE=TRUE di default
 from imgaug import imgaug as ia
 from imgaug import augmenters as iaa
 
@@ -21,14 +21,13 @@ from keras.optimizers import RMSprop
 from keras.layers import LSTM, GRU, Dense, Dropout
 from keras.metrics import categorical_accuracy
 from keras import backend as K
+from cmc_functions import *
 
 from tensorflow.python.client import device_lib
 
-import matplotlib.pyplot as plt     #serve ?
+import matplotlib.pyplot as plt
 from tensorflow.python.keras.callbacks import TensorBoard
 import cv2
-
-
 
 print(device_lib.list_local_devices())
 
@@ -37,8 +36,8 @@ print(device_lib.list_local_devices())
 tf.set_random_seed(7)
 
 # Data-related params
-dataset_root_dir = "C:/Users/Daniele/Desktop/50_id/mese/preprocessed/"
-params_root_dir = "C:/Users/Daniele/Desktop/resnet18_ocid_params"
+dataset_root_dir = "/content/drive/My Drive/Dataset/finale/"
+params_root_dir = "/content/drive/My Drive/ParametriOggetti/resnet18_ocid_params"
 
 dataset_train_dir_rgb = dataset_root_dir + ''
 dataset_val_dir_rgb = dataset_root_dir + ''
@@ -46,32 +45,39 @@ params_dir_rgb = params_root_dir + '/resnet18_ocid_rgb++_params.npy'
 
 params_dir_depth = params_root_dir + '/resnet18_ocid_surfnorm++_params.npy'
 
-train_file = dataset_root_dir + '/train.txt'
-val_file = dataset_root_dir + '/test.txt'
+# todo occhio ai file
+train_file = dataset_root_dir + '/train50.txt'
+val_file = dataset_root_dir + '/val50.txt'
+test_file = dataset_root_dir + '/test50.txt'
 
 # Log params
-tensorboard_log = '/tmp/tensorflow/'
+tensorboard_log = '/content/tmp/tensorflow/'
 
 # Solver params
-learning_rate = [[0.0001]]
-num_epochs = 50  # 50
-batch_size = [[32]]
+learning_rate = [[0.001]]
+num_epochs = 50 # 50
+batch_size = [[64]]
 num_neurons = [[100]]
 l2_factor = [[0.0]]
 maximum_norm = [[4]]
 dropout_rate = [[0.4]]
 
+delta = 0.05            #delta for early stopping
+patience = 3            #patience for early stopping
+
 depth_transf = [[256]]
 transf_block = transformation_block_v1
 
 # Checkpoint dir
-checkpoint_dir = "C:/Users/Daniele/Desktop/50_id/mese/"
+checkpoint_dir = "/tmp/my_caffenet/"
 if not os.path.isdir(checkpoint_dir): os.mkdir(checkpoint_dir)
 
 # Input/Output
-num_classes = 99
+num_classes = 50
 img_size = [224, 224]
 num_channels = 3
+
+simpleLog = "/content/drive/My Drive/RCFusionGPU/log.txt"
 
 """ Online data augmentation """
 
@@ -172,6 +178,16 @@ for hp in set_params:
         shuffle=False,
         random_crops=False)
 
+    test_data = ImageDataHandler(
+        test_file,
+        data_dir=dataset_val_dir,
+        params_dir=params_root_dir,
+        img_size=img_size,
+        batch_size=bs,
+        num_classes=num_classes,
+        shuffle=False,
+        random_crops=False)
+
     # Create a re-initializable iterator given the dataset structure
     # no need for two different to deal with training and val data,
     # just two initializers
@@ -182,24 +198,26 @@ for hp in set_params:
     # Ops for initializing the two different iterators
     training_init_op = iterator.make_initializer(tr_data.data)
     validation_init_op = iterator.make_initializer(val_data.data)
+    testing_init_op = iterator.make_initializer(test_data.data)
 
     # Get the number of training/validation steps per epoch
     tr_batches_per_epoch = int(np.floor(tr_data.data_size / bs))
     val_batches_per_epoch = int(np.floor(val_data.data_size / bs))
+    test_batches = int(np.floor(test_data.data_size / bs))
 
-    init_op_rgb = {'training': training_init_op, 'validation': validation_init_op}
-    batches_per_epoch = {'training': tr_batches_per_epoch, 'validation': val_batches_per_epoch}
+    init_op_rgb = {'training': training_init_op, 'validation': validation_init_op, 'testing': testing_init_op}
+    batches_per_epoch = {'training': tr_batches_per_epoch, 'validation': val_batches_per_epoch, 'testing': test_batches}
 
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
+    config = tf.ConfigProto(gpu_options=gpu_options)
+    config.gpu_options.allow_growth = True
 
     # Start Tensorflow session
     # with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, device_count={'GPU':1})) as sess:
-    with tf.Session() as sess:
-        """ Network definition """
-
+    with tf.Session(config=config) as sess:
         ## RGB branch
-
         # TF placeholder for graph input and output
+
         x_rgb = tf.placeholder(tf.float32, [None, img_size[0], img_size[1], 3])
         x_depth = tf.placeholder(tf.float32, [None, img_size[0], img_size[1], 3])
         y = tf.placeholder(tf.float32, [None, num_classes])
@@ -210,6 +228,11 @@ for hp in set_params:
 
         keep_prob = tf.placeholder(tf.float32)
         training_phase = tf.placeholder(tf.bool)
+
+        loss_val = []
+        loss_train = []
+        acc_val = []
+        acc_train = []
 
         # Max norm
         ckn = np.inf
@@ -360,10 +383,16 @@ for hp in set_params:
         # L2-regularization
         alpha_rnn = aa
         alpha_conv1x1 = aa
+        # alpha_rgb = aa
+        # alpha_depth = aa
         l2_rnn = tf.add_n([tf.nn.l2_loss(tv_rnn) for tv_rnn in trainable_variables_rnn
                            if 'bias' not in tv_rnn.name]) * alpha_rnn
         l2_conv1x1 = tf.add_n([tf.nn.l2_loss(tv_conv1x1) for tv_conv1x1 in trainable_variables_conv1x1
                                if 'bias' not in tv_conv1x1.name]) * alpha_conv1x1
+        # l2_rgb = tf.add_n([tf.nn.l2_loss(tv_rgb) for tv_rgb in trainable_variables_rgb
+        #                      if 'bias' not in tv_rgb.name]) * alpha_rgb
+        # l2_depth = tf.add_n([tf.nn.l2_loss(tv_depth) for tv_depth in trainable_variables_depth
+        #                      if 'bias' not in tv_depth.name]) * alpha_depth
 
         # F2-norm
         # rgb_nodes = [relu_conv1x1_inter_res2_rgb, relu_conv1x1_res2_rgb, relu_conv1x1_inter_res3_rgb, relu_conv1x1_res3_rgb, relu_conv1x1_inter_res4_rgb, relu_conv1x1_res4_rgb, relu_conv1x1_inter_res5_rgb, relu_conv1x1_res5_rgb]
@@ -388,7 +417,7 @@ for hp in set_params:
         lr_mult_conv1x1 = decayed_reg
 
         # Loss
-        loss_l2 = l2_rnn + l2_conv1x1
+        loss_l2 = l2_rnn + l2_conv1x1  # + l2_rgb + l2_depth
         loss_cls = tf.reduce_mean(categorical_crossentropy(y, preds))
 
         loss = loss_cls  # + loss_l2
@@ -397,15 +426,14 @@ for hp in set_params:
         train_step_conv1x1 = tf.keras.optimizers.RMSprop(lr=decayed_lr * lr_mult_conv1x1).get_updates(loss=loss,
                                                                                                       params=trainable_variables_conv1x1)
 
-        train_step_rgb = tf.keras.optimizers.RMSprop(lr=decayed_lr * lr_mult_conv1x1).get_updates(loss=loss,
-                                                                                                      params=trainable_variables_rgb)
+        # train_step_rgb = tf.keras.optimizers.RMSprop(lr=decayed_lr).get_updates(loss=loss,params=trainable_variables_rgb)
 
-        train_step_depth= tf.keras.optimizers.RMSprop(lr=decayed_lr * lr_mult_conv1x1).get_updates(loss=loss,
-                                                                                                      params=trainable_variables_depth)
+        # train_step_depth = tf.keras.optimizers.RMSprop(lr=decayed_lr).get_updates(loss=loss,params=trainable_variables_depth)
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
-            #train_step = tf.group(train_step_rnn, train_step_conv1x1, increment_global_step)
-            train_step = tf.group(train_step_rnn, train_step_conv1x1, train_step_rgb, train_step_depth, increment_global_step, recompute_reg)
+            train_step = tf.group(train_step_rnn, train_step_conv1x1, increment_global_step)
+            # train_step = tf.group(train_step_rnn, train_step_conv1x1, train_step_rgb, train_step_depth, increment_global_step, recompute_reg)
+
         accuracy = tf.reduce_mean(categorical_accuracy(y, preds))
 
         # Create summaries for Tensorboard
@@ -423,22 +451,30 @@ for hp in set_params:
 
         # Initialize all variables
         sess.run(tf.global_variables_initializer())
+        best_saver = tf.train.Saver(max_to_keep=1)
 
         # Load the pretrained weights into the non-trainable layer
         model_rgb.load_params(sess, params_dir_rgb, trainable=True)
         model_depth.load_params(sess, params_dir_depth, trainable=True)
 
-        print(
-            "\nHyper-parameters: lr={}, #neurons={}, bs={}, l2={}, max_norm={}, dropout_rate={}".format(lr, nn, bs, aa,
-                                                                                                        mn, do))
+        print("\nHyper-parameters: lr={}, #neurons={}, bs={}, l2={}, max_norm={}, dropout_rate={}, num_class={}".format(
+                lr, nn, bs, aa,mn, do, num_classes))
         print("Number of trainable parameters = {}".format(
             count_params(trainable_variables_rnn) + count_params(trainable_variables_conv1x1) +
             count_params(trainable_variables_rgb) + count_params(trainable_variables_depth)))
 
         print("\n{} Generate features from training set".format(datetime.now()))
+        
+        makelog = "\nHyper-parameters: lr={}, #neurons={}, bs={}, l2={}, max_norm={}, dropout_rate={}, num_class={}".format(
+                lr, nn, bs, aa,mn, do, num_classes) + "\nNumber of trainable parameters = {}".format(
+            count_params(trainable_variables_rnn) + count_params(trainable_variables_conv1x1) +
+            count_params(trainable_variables_rgb) + count_params(trainable_variables_depth)) + \
+                  "\n{} Generate features from training set".format(datetime.now())
+        sLog(makelog,simpleLog)
 
         tb_train_count = 0
         tb_val_count = 0
+        best_loss_val = 1000
 
         # Loop over number of epochs
         num_samples = 0
@@ -451,6 +487,7 @@ for hp in set_params:
                                       widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
         bar.start()
         train_loss = 0
+        train_acc = 0
         for i in range(tr_batches_per_epoch):
             bar.update(i + 1)
             tb_train_count += 1
@@ -467,6 +504,8 @@ for hp in set_params:
 
         train_loss /= tr_batches_per_epoch  # num_samples
         print("training loss = {}\n".format(train_loss))
+        makelog = "training loss = {}\n".format(train_loss)
+        sLog(str(makelog),simpleLog)
 
         val_acc = 0
         val_loss = 0
@@ -490,6 +529,8 @@ for hp in set_params:
         val_acc /= val_batches_per_epoch  # num_samples
 
         print("\n{} Validation loss : {}, Validation Accuracy = {:.4f}".format(datetime.now(), val_loss, val_acc))
+        makelog = "\n{} Validation loss : {}, Validation Accuracy = {:.4f}".format(datetime.now(), val_loss, val_acc)
+        sLog(str(makelog), simpleLog)
 
         # Loop over number of epochs
         for epoch in range(num_epochs):
@@ -497,6 +538,9 @@ for hp in set_params:
 
             # Training set
             print("\nEpoch: {}/{}".format(epoch + 1, num_epochs))
+            makelog = "\nEpoch: {}/{}".format(epoch + 1, num_epochs)
+            sLog(str(makelog), simpleLog)
+            
             sess.run(training_init_op)
 
             # Progress bar setting
@@ -504,6 +548,7 @@ for hp in set_params:
                                           widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
             bar.start()
             train_loss = 0
+            train_acc = 0
 
             for i in range(tr_batches_per_epoch):
                 bar.update(i + 1)
@@ -517,15 +562,23 @@ for hp in set_params:
 
                 feed_dict = {x_rgb: rgb_batch, x_depth: depth_batch, y: label_batch, keep_prob: (1 - do),
                              training_phase: True, K.learning_phase(): 1}
-                batch_loss, _, summary = sess.run([loss, train_step, summary_op], feed_dict=feed_dict)
+                batch_loss, _, summary, batch_acc_train = sess.run([loss, train_step, summary_op, accuracy],
+                                                                   feed_dict=feed_dict)
                 train_loss += batch_loss
+                train_acc += batch_acc_train
 
                 train_writer.add_summary(summary, tb_train_count)
 
             bar.finish()
 
             train_loss /= tr_batches_per_epoch  # num_samples
+            train_acc /= tr_batches_per_epoch
+            loss_train.append(train_loss)
+            acc_train.append(train_acc)
+
             print("training loss = {}\n".format(train_loss))
+            makelog = "training loss = {}\n".format(train_loss)
+            sLog(str(makelog), simpleLog)
 
             if (epoch + 1) % 1 == 0:
                 sess.run(validation_init_op)
@@ -550,15 +603,108 @@ for hp in set_params:
 
                 val_loss /= val_batches_per_epoch  # num_samples
                 val_acc /= val_batches_per_epoch  # num_samples
+                loss_val.append(val_loss)
+                acc_val.append(val_acc)
 
-                print(
-                    "\n{} Validation loss : {}, Validation Accuracy = {:.4f}".format(datetime.now(), val_loss, val_acc))
+                print("\n{} Validation loss : {}, Validation Accuracy = {:.4f}".format(datetime.now(), val_loss, val_acc))
+                
+                makelog = "\n{} Validation loss : {}, Validation Accuracy = {:.4f}".format(datetime.now(), val_loss, val_acc)
+                sLog(str(makelog), simpleLog)
+                
+                if val_loss < best_loss_val:
+                    best_saver.save(sess, "/content/drive/My Drive/RCFusionGPU/bestmodel/model")
+                    best_loss_val = val_loss
+                    print("epoca migliore:", epoch +1)
+            
+                # Early stopping
+                if epoch > patience:
+                    count = 0
+                    for x in loss_val[epoch -patience: epoch]:
+                        if val_loss > x - delta:
+                            count +=1
+                    if count == patience:
+                        num_epochs = epoch + 1
+                        break
+                            
 
             # Early stopping for ill-posed params combination
             if ((epoch == 0) and (val_acc < 0.2)) or ((epoch == 9) and (val_acc < 0.5)) or np.isnan(train_loss):
-                print("Training stopped due to poor results or divergence: validation loss = {}".format(val_acc))
+                print("Training stopped due to poor results or divergence: validation accuracy = {}".format(val_acc))
                 break
+            
+                makelog = "Training stopped due to poor results or divergence: validation accuracy = {}".format(val_acc)
+                sLog(str(makelog), simpleLog)
+            
+            
+        fig1 = plt.figure(1)
+        plt.title('Loss')
+        plt.plot(loss_val, 'r', label='Validation Loss')
+        plt.plot(loss_train, 'b', label='Training Loss')
+        plt.legend(loc="upper right")
+        x = list(range(0, num_epochs+1, 5))
+        plt.xlim(right=num_epochs)
+        plt.xticks(x)
+        plt.grid(True)
+        fig1.savefig("loss.png")
+        plt.show()
 
-    #tf.reset_default_graph()
-    #shutil.rmtree(tensorboard_log)
-    #tensorboard --logdir=/tmp/tensorflow/
+
+        fig2 = plt.figure(2)
+        plt.title('Accuracy')
+        plt.plot(acc_val, 'r', label='Validation Accuracy')
+        plt.plot(acc_train, 'b', label='Training Accuracy')
+        plt.legend(loc="lower right")
+        x = list(range(0, num_epochs+1, 5))
+        plt.xlim(right=num_epochs)
+        plt.xticks(x)
+        plt.grid(True)
+        fig2.savefig("accuracy.png")
+        plt.show()
+        
+        #TEST PHASE
+        #tf.reset_default_graph()
+        #saver = tf.train.import_meta_graph(sess, "/content/drive/My Drive/RCFusionGPU/bestmodel/model.meta")
+        saver = tf.train.Saver()
+        saver.restore(sess, "/content/drive/My Drive/RCFusionGPU/bestmodel/model")
+        print("Model restored")
+        sess.run(testing_init_op)
+        num_samples = 0
+        test_loss = 0
+        test_acc = 0
+        test_val_count = 0
+        full_batch = []
+        full_pred = []
+        for i in range(test_batches):
+            test_val_count += 1
+            rgb_batch, depth_batch, label_batch = sess.run(next_batch)
+
+            num_samples += np.shape(rgb_batch)[0]
+
+            feed_dict = {x_rgb: rgb_batch, x_depth: depth_batch, y: label_batch, keep_prob: 1.0, training_phase: False,
+                         K.learning_phase(): 0}
+            batch_loss, batch_acc, summary, batch_preds = sess.run([loss, accuracy, summary_op, preds],
+                                                                   feed_dict=feed_dict)
+
+            test_loss += batch_loss
+            test_acc += batch_acc
+            full_pred.extend(batch_preds)
+            full_batch.extend(label_batch)
+            
+        test_loss /= test_batches# num_samples
+        test_acc /= test_batches
+
+        #print(full_batch)
+        batchMatrix = defineImageRank(full_pred, full_batch)
+        classList, num_of_frames = countTry(batchMatrix, num_classes)
+        values = cmc_values(classList, num_of_frames)
+        plot_cmc(values, "CMC", num_classes)
+        computeRoc(full_batch,full_pred,num_classes)
+
+        print("\n{} Testing loss : {}, Testing Accuracy = {:.4f}".format(datetime.now(), test_loss, test_acc))
+        
+        makelog = "\n{} Testing loss : {}, Testing Accuracy = {:.4f}".format(datetime.now(), test_loss, test_acc)
+        sLog(str(makelog), simpleLog)
+
+    tf.reset_default_graph()
+    # shutil.rmtree(tensorboard_log)
+    # tensorboard --logdir=/tmp/tensorflow/

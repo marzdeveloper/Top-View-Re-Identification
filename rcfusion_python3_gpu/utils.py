@@ -1,6 +1,9 @@
 import numpy as np
 import operator
 from functools import reduce
+from sklearn.metrics import roc_curve, auc
+import matplotlib.pyplot as plt
+
 
 def load_params(dir):
     return np.load(dir).item()
@@ -89,4 +92,46 @@ def log_file(history_callback, log_dir, params):
             f.write(line)
 
     print('Log file saved.\n')
+
+
+#crea il log
+def sLog(data,name):
+    file = open(name,"a")
+    file.write(str(data))
+    file.close()
+
+#allLabel:  vettore grande quanto il n di foto del test, contiene la classe originale
+#allPredsProb:  vettore grande quanto il n di foto del test, contiene il vettore di probabilitÃƒÂ  delle classi
+#numclasses da modificare(?)
+#alllabel = fullbatch
+def computeRoc(allLabel,allPredsProb,num_classes):
+
+    labels = np.array(allLabel)
+    preds = np.array(allPredsProb)
+
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    for i in range(num_classes):
+        fpr[i], tpr[i], _ = roc_curve(labels[:, i], preds[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+
+    # Compute micro-average ROC curve and ROC area
+    fpr["micro"], tpr["micro"], _ = roc_curve(labels.ravel(), preds.ravel())
+    roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+
+    fig = plt.figure(figsize=(5, 5), dpi=80)
+    lw = 2
+    plt.plot(fpr[2], tpr[2], color='darkorange',
+             lw=lw, label='ROC curve (area = %0.2f)' % roc_auc[2])
+    plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC')
+    plt.legend(loc="lower right")
+    plt.show()
+    fig.savefig("roc.png")
 
