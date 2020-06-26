@@ -98,7 +98,9 @@ class ResNet(object):
                 else:
                     # Load weights
                     if layer[:6] == 'fc1000':
-                        sess.run(tf.get_variable('weights', initializer=tf.contrib.layers.xavier_initializer(), trainable=trainable))
+                        #sess.run(tf.get_variable('weights', initializer=tf.contrib.layers.xavier_initializer(), trainable=trainable))
+                        var = tf.get_variable('weights', initializer=tf.contrib.layers.xavier_initializer(), trainable=trainable)
+                        sess.run(var)
                     else:
                         var = tf.get_variable('weights', trainable=trainable)
                         sess.run(var.assign(params[layer]['weights']))
