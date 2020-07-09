@@ -1,13 +1,14 @@
 import csv
 import random
 
-path_train = "C:/Users/Daniele/Desktop/TVPR2/train.csv" #path al csv di train
-path_test = "C:/Users/Daniele/Desktop/TVPR2/test.csv" #path al csv di test
-txt_path = "C:/Users/Daniele/Desktop/TVPR2/txt/100id_50foto/"
+path_train = "/home/nico/Scrivania/Computer vision/Progetto/csv/train.csv" #path al csv di train
+path_test = "/home/nico/Scrivania/Computer vision/Progetto/csv/test.csv" #path al csv di test
+txt_path = "/home/nico/Scrivania/Computer vision/Progetto/csv/"
 #csv_dest_path = "C:/Users/Daniele/Desktop/Dataset_gennaio/result_gennaio_1060_foto7.csv"
 
 min = 50 #numero minimo di foto per classe
 max = 50 #numero massimo di foto per classe
+gallery_photo = 1 #numero di foto per classe nella gallery (minore o uguale di min)
 
 max_id=100
 i = 0
@@ -16,6 +17,7 @@ in_file_train = open(path_train)
 csvreader_train = csv.reader(in_file_train, delimiter=";")
 in_file_test = open(path_test)
 csvreader_test = csv.reader(in_file_test, delimiter=";")
+gallery_file = open(txt_path+"gallery.txt", "w", newline='')
 train_file = open(txt_path+"train.txt", "w", newline='')
 val_file = open(txt_path+"val.txt", "w", newline='')
 test_file = open(txt_path+"test.txt", "w", newline='')
@@ -33,6 +35,9 @@ for row in csvreader_train:
         directory = row[0]
         row = row[3:]
         apache = random.sample(row, min)
+        gallery_apache = random.sample(apache, gallery_photo)
+        for i, photo in enumerate(gallery_apache):
+            gallery_file.write(directory + '/' + photo.strip('_rgb.jpg') + ' ' + str(count_train) + '\n')
         for i, photo in enumerate(apache):
             if i < int(0.8*max):#max o max_foto ?
                 train_file.write(directory + '/' + photo.strip('_rgb.jpg') + ' ' + str(count_train) + '\n')
