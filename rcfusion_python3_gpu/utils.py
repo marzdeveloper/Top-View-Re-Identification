@@ -3,10 +3,11 @@ import operator
 from functools import reduce
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 def load_params(dir):
     return np.load(dir).item()
+
 
 def flat_shape(tensor):
     """Return flattened dimension of a sample"""
@@ -14,22 +15,24 @@ def flat_shape(tensor):
     shape = tuple([s[i].value for i in range(0, len(s))])
     return reduce(operator.mul, shape[1:])
 
+
 def update_collection(name, feature, collection):
     """ Update the appropriate features from different the collection """
 
     # Flatten samples
-    if name is not 'label': # label arrays are already in the correct format
+    if name is not 'label':  # label arrays are already in the correct format
         batch_size = np.shape(feature)[0]
         sample_size = reduce(operator.mul, np.shape(feature)[1:])
         feature = np.reshape(feature, (batch_size, sample_size))
 
     # Add to the previous array
-    if np.shape(collection[name])[0] == 0: # if it's the first feature to be inserted in the collection
+    if np.shape(collection[name])[0] == 0:  # if it's the first feature to be inserted in the collection
         collection[name] = feature
     else:
         collection[name] = np.vstack((collection[name], feature))
 
     return collection
+
 
 def collect_features(sess, feed_dict, nodes, labels, collection):
     """ Collect the features from nodes in collection (dictionary) """
@@ -50,6 +53,7 @@ def collect_features(sess, feed_dict, nodes, labels, collection):
 
     return collection
 
+
 def prepare_sequence(names, features, batch_size):
     """
     Transform dictionary of features in sequential input for recurrent networks.
@@ -66,6 +70,7 @@ def prepare_sequence(names, features, batch_size):
 
     return x, y
 
+
 def count_params(trainable_variables):
     global_w = 0
     for var in trainable_variables:
@@ -76,8 +81,8 @@ def count_params(trainable_variables):
         global_w += local_w
     return global_w
 
-def log_file(history_callback, log_dir, params):
 
+def log_file(history_callback, log_dir, params):
     log_name = log_dir + 'log_'
     for p in params:
         log_name += ('_' + str(p))
@@ -94,37 +99,40 @@ def log_file(history_callback, log_dir, params):
     print('Log file saved.\n')
 
 
-#crea il log
-def sLog(data,name):
-    file = open(name,"a")
+# crea il log
+def sLog(data, name):
+    file = open(name, "a")
     file.write(str(data))
     file.close()
 
-#allLabel:  vettore grande quanto il n di foto del test, contiene la classe originale
-#allPredsProb:  vettore grande quanto il n di foto del test, contiene il vettore di probabilitÃƒÂ  delle classi
-#numclasses da modificare(?)
-#alllabel = fullbatch
-def computeRoc(allLabel,allPredsProb,num_classes):
 
-    labels = np.array(allLabel)
-    preds = np.array(allPredsProb)
+# allLabel:  vettore grande quanto il n di foto del test, contiene la classe originale
+# allPredsProb:  vettore grande quanto il n di foto del test, contiene il vettore di probabilitÃƒÂ  delle classi
+# numclasses da modificare(?)
+# alllabel = fullbatch
+def computeRoc(full_batch, full_pred, num_classes):
+    y_true = np.array(full_batch)
+    y_score = np.array(full_pred)
 
     fpr = dict()
     tpr = dict()
     roc_auc = dict()
     for i in range(num_classes):
-        fpr[i], tpr[i], _ = roc_curve(labels[:, i], preds[:, i])
+        fpr[i], tpr[i], _ = roc_curve(y_true[:, i], y_score[:, i])
         roc_auc[i] = auc(fpr[i], tpr[i])
 
-
     # Compute micro-average ROC curve and ROC area
-    fpr["micro"], tpr["micro"], _ = roc_curve(labels.ravel(), preds.ravel())
+    fpr["micro"], tpr["micro"], _ = roc_curve(y_true.ravel(), y_score.ravel())
     roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
 
-    fig = plt.figure(figsize=(5, 5), dpi=80)
+    fig3 = plt.figure(figsize=(8, 6), dpi=80)
     lw = 2
-    plt.plot(fpr[2], tpr[2], color='darkorange',
-             lw=lw, label='ROC curve (area = %0.2f)' % roc_auc[2])
+
+    plt.plot(fpr["micro"], tpr["micro"],
+             label='micro-average ROC curve (area = {0:0.2f})'
+                   ''.format(roc_auc["micro"]),
+             color='darkorange', linestyle=':', linewidth=4)
+
     plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
@@ -133,5 +141,33 @@ def computeRoc(allLabel,allPredsProb,num_classes):
     plt.title('ROC')
     plt.legend(loc="lower right")
     plt.show()
-    fig.savefig("roc.png")
+    #fig3.savefig("roc.png")
+    plt.close(fig3)
 
+def euclidean_distance(vector_1, vector_2, label, num_classes, frames_gallery):
+    dist = []
+    for clas in range(num_classes):
+        count = 0
+        for i, item in enumerate(label):
+            if item == clas:
+                dist.append(np.linalg.norm(vector_1-vector_2[i]))
+                count += 1
+            if count == frames_gallery:
+                break
+    return dist
+
+def dist_matrix_min(dist, frames_gallery):
+    x = []
+    for i, item in enumerate(dist):
+        x.append([])
+        for j in range(0, len(item), frames_gallery):
+            x[i].append(min(item[j:j + frames_gallery]))
+    return x
+
+def dist_matrix_avg(dist, frames_gallery):
+    x = []
+    for i, item in enumerate(dist):
+        x.append([])
+        for j in range(0, len(item), frames_gallery):
+            x[i].append(np.mean(np.array(item[j:j + frames_gallery])))
+    return x
