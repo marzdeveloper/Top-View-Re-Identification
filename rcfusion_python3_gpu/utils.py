@@ -152,8 +152,8 @@ def euclidean_distance(vector_1, vector_2, label, num_classes, frames_gallery):
             if item == clas:
                 dist.append(np.linalg.norm(vector_1-vector_2[i]))
                 count += 1
-            if count == frames_gallery:
-                break
+                if count == frames_gallery:
+                    break
     return dist
 
 def dist_matrix_min(dist, frames_gallery):

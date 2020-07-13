@@ -251,9 +251,6 @@ for hp in set_params:
     tr_batches_per_epoch = int(np.ceil((tr_data.data_size) / bs))
     new_tr_batch = int(np.ceil((tr_data.data_size)*3 / bs))
 
-    print("tr_batches_per_epoch ==",int(tr_batches_per_epoch))
-    #print("tr_new_tr_batch ==",int(new_tr_batch))
-
     val_batches_per_epoch = int(np.ceil(val_data.data_size / bs))
     test_batches = int(np.ceil(test_data.data_size / bs))
     gallery_batches = int(np.ceil(gallery_data.data_size / bs))

@@ -6,7 +6,7 @@ import scipy
 import tensorflow as tf
 from datetime import datetime
 import progressbar
-from image_data_handler_joint_multimodal_jpg import ImageDataHandler
+from image_data_handler_joint_multimodal import ImageDataHandler
 from resnet18 import ResNet
 from layer_blocks import *
 from tensorflow.data import Iterator
@@ -38,32 +38,34 @@ print(device_lib.list_local_devices())
 tf.set_random_seed(7)
 
 params_root_dir = "D:/Cose_Uni/Magistrale/Anno_1/secondo_semestre/computer_vision/re-identification/Recurrent Convolutional Fusion for RGB-D/resnet18_ocid_params"
-dataset_root_dir = "D:/DATASET/tvpr2"#tvpr2
+#dataset_root_dir = "D:/DATASET/tvpr2"#tvpr2
+#dataset_root_dir = "D:/DATASET/DatasetGennFebb_staffRiunito_v_finale/finale/"
+dataset_root_dir = "D:/DATASET/150_id_bilanciato(tutto dataset)/Dataset_gennaio/preprocessed/"
 
 
 
-dataset_train_dir_rgb = dataset_root_dir + '/train/'
-dataset_val_dir_rgb = dataset_root_dir + '/train/'
-dataset_test_dir = dataset_root_dir +'/test/'
-dataset_gallery_dir = 'C:/Users/lorca/Desktop/'
+dataset_train_dir_rgb = dataset_root_dir + ''
+dataset_val_dir_rgb = dataset_root_dir + ''
+dataset_test_dir = dataset_root_dir +''
+dataset_gallery_dir = dataset_root_dir +''
 
 params_dir_rgb = params_root_dir + '/resnet18_ocid_rgb++_params.npy'
 
 params_dir_depth = params_root_dir + '/resnet18_ocid_surfnorm++_params.npy'
 
 # todo occhio ai file
-train_file = dataset_train_dir_rgb + '/train50.txt'
-val_file = dataset_val_dir_rgb + '/train50.txt'
-test_file = dataset_test_dir + '/test50.txt'
-gallery_file = dataset_train_dir_rgb + '/gallery.txt'
+train_file = dataset_train_dir_rgb + 'train.txt'
+val_file = dataset_val_dir_rgb + 'val.txt'
+test_file = dataset_test_dir + 'test.txt'
+gallery_file = dataset_train_dir_rgb + 'gallery.txt'
 
 # Log params
 tensorboard_log = '/content/tmp/tensorflow/'
 
 # Solver params
-learning_rate = [[0.0001]]
+learning_rate = [[0.0001]]  #0.0001
 num_epochs = 50  # 50
-batch_size = [[16]]
+batch_size = [[8]]
 num_neurons = [[100]]
 l2_factor = [[0.0]]
 maximum_norm = [[4]]
@@ -84,7 +86,7 @@ num_classes = 50
 img_size = [224, 224]
 num_channels = 3
 
-augDim = 3
+frames_gallery = 5
 
 simpleLog = "C:/Users/lorca/PycharmProjects/Log.txt"
 
@@ -134,15 +136,15 @@ def data_aug(batch, batch_depth,label_batch):
         newDepth.append(iaa.Flipud(val_flipud).augment_image(batch_depth[i]))
         newLabel.append(label_batch[i])
 
-        '''val_scala = random.randrange(5, 11, 1)
+        val_scala = random.randrange(5, 11, 1)
         newBatch.append(iaa.Affine(10.0 / val_scala, mode='edge').augment_image(batch[i]))
         newDepth.append(iaa.Affine(10.0 / val_scala, mode='edge').augment_image(batch_depth[i]))
-        newLabel.append(label_batch[i])'''
+        newLabel.append(label_batch[i])
 
-        '''val = float(val_scala / 10.0)
+        val = float(val_scala / 10.0)
         newBatch.append(iaa.Affine(val, mode='edge').augment_image(batch[i]))
         newDepth.append(iaa.Affine(val, mode='edge').augment_image(batch_depth[i]))
-        newLabel.append(label_batch[i])'''
+        newLabel.append(label_batch[i])
 
 
         newBatch.append(iaa.Affine(rotate=180, mode='edge').augment_image(batch[i]))
@@ -241,8 +243,6 @@ for hp in set_params:
                                        tr_data.data.output_shapes)
     next_batch = iterator.get_next()
 
-    #data_aug(tr_data.data.batch(bs), tr_data.data.batch(bs), tr_data.labels)
-
     # Ops for initializing the two different iterators
     training_init_op = iterator.make_initializer(tr_data.data)
     validation_init_op = iterator.make_initializer(val_data.data)
@@ -252,9 +252,6 @@ for hp in set_params:
     # Get the number of training/validation steps per epoch
     tr_batches_per_epoch = int(np.ceil((tr_data.data_size) / bs))
     new_tr_batch = int(np.ceil((tr_data.data_size)*3 / bs))
-
-    print("tr_batches_per_epoch ==",int(tr_batches_per_epoch))
-    #print("tr_new_tr_batch ==",int(new_tr_batch))
 
     val_batches_per_epoch = int(np.ceil(val_data.data_size / bs))
     test_batches = int(np.ceil(test_data.data_size / bs))
@@ -519,14 +516,14 @@ for hp in set_params:
         model_rgb.load_params(sess, params_dir_rgb, trainable=True)
         model_depth.load_params(sess, params_dir_depth, trainable=True)
 
-        print("\nHyper-parameters: lr={}, #neurons={}, bs={}, l2={}, max_norm={}, dropout_rate={}, num_class={}".format(
+        print("\nHyper-parameters: lr={}, #neurons={}, bs={}, l2={}, max_norm={}, dropout_rate={}, num_classes={}".format(
             lr, nn, bs, aa, mn, do, num_classes))
         print("Number of trainable parameters = {}".format(
             count_params(trainable_variables_rnn) + count_params(trainable_variables_conv1x1) +
             count_params(trainable_variables_rgb) + count_params(trainable_variables_depth)))
 
         print("\n{} Generate features from training set".format(datetime.now()))
-        makelog = "Hyper-parameters: lr={}, #neurons={}, bs={}, l2={}, max_norm={}, dropout_rate={}, num_class={}".format(
+        makelog = "Hyper-parameters: lr={}, #neurons={}, bs={}, l2={}, max_norm={}, dropout_rate={}, num_classes={}".format(
             lr, nn, bs, aa, mn, do, num_classes) + "\nNumber of trainable parameters = {}".format(
             count_params(trainable_variables_rnn) + count_params(trainable_variables_conv1x1) +
             count_params(trainable_variables_rgb) + count_params(trainable_variables_depth)) + \
@@ -589,8 +586,6 @@ for hp in set_params:
                          K.learning_phase(): 0}
             batch_loss, batch_acc, summary = sess.run([loss, accuracy, summary_op], feed_dict=feed_dict)
 
-
-
             val_loss += (batch_loss * current_batch_len)
             val_acc += (batch_acc * current_batch_len)
             val_writer.add_summary(summary, tb_val_count * (tr_batches_per_epoch / val_batches_per_epoch))
@@ -631,13 +626,10 @@ for hp in set_params:
                 current_batch_len = np.shape(rgb_batch)[0]
                 num_samples += current_batch_len
 
-
                 '''#cv2.cvtColor(rgb_batch[i], cv2.COLOR_BGR2RGB)
                 for k in range(len(label_batch)):
                     cv2.imshow('RgbAugSample' + str(k), rgb_batch[k])
                     cv2.waitKey(0)'''
-
-
 
                 '''#cv2.cvtColor(rgb_batch[i], cv2.COLOR_BGR2RGB)
                 cv2.imshow('RgbAugSample', rgb_batch[i])
@@ -670,10 +662,7 @@ for hp in set_params:
                 batch_loss, _, summary, batch_acc_train,batch_preds = sess.run([tloss, train_step, summary_op, accuracy,preds],
                                                                    feed_dict=feed_dict)
 
-
-
                 #t_loss = sess.run(tLoss,feed_dict=feed_dict)
-
 
                 train_loss += (batch_loss * current_batch_len)
                 train_acc += (batch_acc_train * current_batch_len)
@@ -768,7 +757,7 @@ for hp in set_params:
         plt.xticks(x)
         plt.grid(True)
         fig1.savefig("loss.png")
-        plt.show()
+        #plt.show()
 
         fig2 = plt.figure(2)
         plt.title('Accuracy')
@@ -780,7 +769,7 @@ for hp in set_params:
         plt.xticks(x)
         plt.grid(True)
         fig2.savefig("accuracy.png")
-        plt.show()
+        #plt.show()
 
         #RESTORE MODEL
         saver = tf.train.Saver()
@@ -804,8 +793,7 @@ for hp in set_params:
                          K.learning_phase(): 0}
             features = sess.run(rnn_h, feed_dict=feed_dict)
 
-            #tf.concat([gallery_features, rnn_h], 0)
-            gallery_features.append(features)
+            gallery_features.extend(features)
             gallery_full_batch.extend(label_batch)
 
         gallery_true_class = np.argmax(gallery_full_batch, axis =1)
@@ -833,13 +821,13 @@ for hp in set_params:
                          K.learning_phase(): 0}
             batch_features = sess.run(rnn_h, feed_dict=feed_dict)
             #test_features.append(features)
-            #tf.concat([test_features, rnn_h], 0)
 
             full_label.extend(label_batch)
 
-            for img_feature in batch_features:
-                dist_matrix.append(euclidean_distance(np.array(img_feature), np.array(gallery_features)))
+            [dist_matrix.append(euclidean_distance(np.array(img_feature), np.array(gallery_features), gallery_true_class, num_classes, frames_gallery)) for img_feature in batch_features]
 
+        #dist_min = dist_matrix_avg(dist_matrix, frames_gallery)
+        dist_min = dist_matrix_min(dist_matrix, frames_gallery)
 
         '''   # y_score per ogni immagine contiene il valore di probabilitÃƒÂ  della classe vera
         y_score = []
@@ -848,7 +836,7 @@ for hp in set_params:
                 if int(full_label[i][k]) == 1:
                     y_score.append(float(full_pred[i][k]))'''
 
-        batchMatrix = defineImageRank1(dist_matrix, full_label)
+        batchMatrix = defineImageRank1(dist_min, full_label)
         classList, num_of_frames = countTry(batchMatrix, num_classes)
         values = cmc_values(classList, num_of_frames)
         plot_cmc(values, "CMC", num_classes)
