@@ -140,8 +140,8 @@ def computeRoc(full_batch, full_pred, num_classes):
     plt.ylabel('True Positive Rate')
     plt.title('ROC')
     plt.legend(loc="lower right")
+    fig3.savefig("roc.png")
     plt.show()
-    #fig3.savefig("roc.png")
     plt.close(fig3)
 
 def euclidean_distance(vector_1, vector_2, label, num_classes, frames_gallery):
