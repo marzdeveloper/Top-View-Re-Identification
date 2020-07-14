@@ -3,14 +3,14 @@ import random
 
 path_train = "C:/Users/Daniele/Desktop/TVPR2/train.csv" #path al csv di train
 path_test = "C:/Users/Daniele/Desktop/TVPR2/test.csv" #path al csv di test
-txt_path = "C:/Users/Daniele/Desktop/TVPR2/txt/random/50id_50foto/"
+txt_path = "C:/Users/Daniele/Desktop/TVPR2/txt/random/100id_50foto/"
 #csv_dest_path = "C:/Users/Daniele/Desktop/Dataset_gennaio/result_gennaio_1060_foto7.csv"
 
 min = 50 #numero minimo di foto per classe
 max = 50 #numero massimo di foto per classe
 gallery_photo = 5 #numero di foto per classe nella gallery (minore o uguale di min)
 
-max_id=50
+max_id=100
 i = 0
 count_train = 0
 in_file_train = open(path_train)

@@ -568,8 +568,6 @@ for hp in set_params:
                 tb_train_count += 1
                 rgb_batch, depth_batch, label_batch = sess.run(next_batch)
 
-                num_samples += np.shape(rgb_batch)[0]
-
                 # apply data augmentation
                 rgb_batch, depth_batch, label_batch = data_aug(rgb_batch, depth_batch, label_batch)
 

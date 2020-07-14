@@ -6,7 +6,7 @@ import scipy
 import tensorflow as tf
 from datetime import datetime
 import progressbar
-from image_data_handler_joint_multimodal import ImageDataHandler
+from image_data_handler_joint_multimodal_png import ImageDataHandler
 from resnet18 import ResNet
 from layer_blocks import *
 from tensorflow.data import Iterator
@@ -24,51 +24,55 @@ from keras.layers import LSTM, GRU, Dense, Dropout
 from keras.metrics import categorical_accuracy
 from keras import backend as K
 from cmc_functions import *
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, accuracy_score
 
 from tensorflow.python.client import device_lib
 
 import matplotlib.pyplot as plt
 from tensorflow.python.keras.callbacks import TensorBoard
 import cv2
-
 print(device_lib.list_local_devices())
 
 """ Configuration setting """
 
 tf.set_random_seed(7)
 
-# Data-related params
-dataset_root_dir = "C:/Users/Daniele/Desktop/finale/"
-test_root_dir = "C:/Users/Daniele/Desktop/finale/"
-params_root_dir = "C:/Users/Daniele/Desktop/resnet18_ocid_params"
+params_root_dir = "D:/Cose_Uni/Magistrale/Anno_1/secondo_semestre/computer_vision/re-identification/Recurrent Convolutional Fusion for RGB-D/resnet18_ocid_params"
+#dataset_root_dir = "D:/DATASET/tvpr2"#tvpr2
+#dataset_root_dir = "D:/DATASET/DatasetGennFebb_staffRiunito_v_finale/finale/"
+dataset_root_dir = "D:/DATASET/150_id_bilanciato(tutto dataset)/Dataset_gennaio/preprocessed/"
 
-dataset_train_dir_rgb = dataset_root_dir
-dataset_val_dir_rgb = dataset_root_dir
-dataset_test_dir_rgb = test_root_dir
+
+
+dataset_train_dir_rgb = dataset_root_dir + ''
+dataset_val_dir_rgb = dataset_root_dir + ''
+dataset_test_dir = dataset_root_dir +''
+dataset_gallery_dir = dataset_root_dir +''
+
 params_dir_rgb = params_root_dir + '/resnet18_ocid_rgb++_params.npy'
 
 params_dir_depth = params_root_dir + '/resnet18_ocid_surfnorm++_params.npy'
 
 # todo occhio ai file
-train_file = dataset_root_dir + '/train50.txt'
-val_file = dataset_root_dir + '/val50.txt'
-test_file = test_root_dir + '/test50.txt'
+train_file = dataset_train_dir_rgb + 'train.txt'
+val_file = dataset_val_dir_rgb + 'val.txt'
+test_file = dataset_test_dir + 'test.txt'
+gallery_file = dataset_train_dir_rgb + 'gallery.txt'
 
 # Log params
 tensorboard_log = '/content/tmp/tensorflow/'
 
 # Solver params
-learning_rate = [[0.0001]]
-num_epochs = 50 # 50
-batch_size = [[32]]
+learning_rate = [[0.0001]]  #0.0001
+num_epochs = 50  # 50
+batch_size = [[8]]
 num_neurons = [[100]]
 l2_factor = [[0.0]]
 maximum_norm = [[4]]
 dropout_rate = [[0.4]]
 
-delta = 0.005            #delta for early stopping
-patience = 3            #patience for early stopping
+delta = 0.0005  # delta for early stopping
+patience = 2  # patience for early stopping
 
 depth_transf = [[256]]
 transf_block = transformation_block_v1
@@ -82,7 +86,9 @@ num_classes = 50
 img_size = [224, 224]
 num_channels = 3
 
-simpleLog = "C:/Users/Daniele/Desktop/Febbraio finale/log.txt"
+frames_gallery = 5
+
+simpleLog = "C:/Users/lorca/PycharmProjects/Log.txt"
 
 """ Online data augmentation """
 
@@ -108,37 +114,64 @@ def x_y_random_image(image):
     return pos_x, pos_y
 
 
-def data_aug(batch, batch_depth):
+def data_aug(batch, batch_depth,label_batch):
     num_img = batch.shape[0]
-    list = []
-    list_depth = []
-    for i in range(num_img):
-        val_fliplr = random.randrange(0, 2, 1)  # in questo modo il due non e compreso e restituisce i valori 0 o 1
-        list.extend([iaa.Fliplr(val_fliplr)])
-        list_depth.extend([iaa.Fliplr(val_fliplr)])
 
-        val_fliplr = random.randrange(0, 2, 1)  # in questo modo il due non e compreso e restituisce i valori 0 o 1
-        list.extend([iaa.Flipud(val_fliplr)])
-        list_depth.extend([iaa.Flipud(val_fliplr)])
+    newBatch, newDepth, newLabel =[],[],[]
+
+
+
+    for i in range(num_img):
+        newBatch.append(batch[i])
+        newDepth.append(batch_depth[i])
+        newLabel.append(label_batch[i])
+
+        val_fliplr =1
+        newBatch.append(iaa.Fliplr(val_fliplr).augment_image(batch[i]))
+        newDepth.append(iaa.Fliplr(val_fliplr).augment_image(batch_depth[i]))
+        newLabel.append(label_batch[i])
+
+        val_flipud = 1
+        newBatch.append(iaa.Flipud(val_flipud).augment_image(batch[i]))
+        newDepth.append(iaa.Flipud(val_flipud).augment_image(batch_depth[i]))
+        newLabel.append(label_batch[i])
 
         val_scala = random.randrange(5, 11, 1)
+        newBatch.append(iaa.Affine(10.0 / val_scala, mode='edge').augment_image(batch[i]))
+        newDepth.append(iaa.Affine(10.0 / val_scala, mode='edge').augment_image(batch_depth[i]))
+        newLabel.append(label_batch[i])
+
         val = float(val_scala / 10.0)
-        list.extend([iaa.Affine(val, mode='edge')])
-        list.extend([iaa.Affine(10.0 / val_scala, mode='edge')])
-        list_depth.extend([iaa.Affine(val, mode='edge')])
-        list_depth.extend([iaa.Affine(10.0 / val_scala, mode='edge')])
+        newBatch.append(iaa.Affine(val, mode='edge').augment_image(batch[i]))
+        newDepth.append(iaa.Affine(val, mode='edge').augment_image(batch_depth[i]))
+        newLabel.append(label_batch[i])
 
-        val_rotation = random.randrange(-180, 181, 90)
-        list.extend([iaa.Affine(rotate=val_rotation, mode='edge')])
-        list_depth.extend([iaa.Affine(rotate=val_rotation, mode='edge')])
 
-        augseq = iaa.Sequential(list)
-        batch[i] = augseq.augment_image(batch[i])
-        augseq_depth = iaa.Sequential(list)
-        batch_depth[i] = augseq_depth.augment_image(batch_depth[i])
+        newBatch.append(iaa.Affine(rotate=180, mode='edge').augment_image(batch[i]))
+        newDepth.append(iaa.Affine(rotate=180, mode='edge').augment_image(batch_depth[i]))
+        newLabel.append(label_batch[i])
 
-        list = []
-        list_depth = []
+        newBatch.append(iaa.Affine(rotate=90, mode='edge').augment_image(batch[i]))
+        newDepth.append(iaa.Affine(rotate=90, mode='edge').augment_image(batch_depth[i]))
+        newLabel.append(label_batch[i])
+
+        newBatch.append(iaa.Affine(rotate=270, mode='edge').augment_image(batch[i]))
+        newDepth.append(iaa.Affine(rotate=270, mode='edge').augment_image(batch_depth[i]))
+        newLabel.append(label_batch[i])
+
+
+        '''
+        if i % 2 == 0:
+            list.extend([iaa.Affine(rotate=180, mode='edge')])
+            list_depth.extend([iaa.Affine(rotate=180, mode='edge')])
+
+        else:
+            list.extend([iaa.Noop()])
+            list_depth.extend([iaa.Noop()])
+        '''
+    return newBatch, newDepth, newLabel
+
+
 
 
 """ Loop for gridsearch of hyper-parameters """
@@ -185,7 +218,17 @@ for hp in set_params:
 
     test_data = ImageDataHandler(
         test_file,
-        data_dir=dataset_val_dir,
+        data_dir=dataset_test_dir,
+        params_dir=params_root_dir,
+        img_size=img_size,
+        batch_size=bs,
+        num_classes=num_classes,
+        shuffle=False,
+        random_crops=False)
+
+    gallery_data = ImageDataHandler(
+        gallery_file,
+        data_dir=dataset_train_dir,
         params_dir=params_root_dir,
         img_size=img_size,
         batch_size=bs,
@@ -204,14 +247,17 @@ for hp in set_params:
     training_init_op = iterator.make_initializer(tr_data.data)
     validation_init_op = iterator.make_initializer(val_data.data)
     testing_init_op = iterator.make_initializer(test_data.data)
+    gallery_init_op = iterator.make_initializer(gallery_data.data)
 
     # Get the number of training/validation steps per epoch
-    tr_batches_per_epoch = int(np.ceil(tr_data.data_size / bs))
+    tr_batches_per_epoch = int(np.ceil((tr_data.data_size) / bs))
     val_batches_per_epoch = int(np.ceil(val_data.data_size / bs))
     test_batches = int(np.ceil(test_data.data_size / bs))
+    gallery_batches = int(np.ceil(gallery_data.data_size / bs))
 
-    init_op_rgb = {'training': training_init_op, 'validation': validation_init_op, 'testing': testing_init_op}
-    batches_per_epoch = {'training': tr_batches_per_epoch, 'validation': val_batches_per_epoch, 'testing': test_batches}
+
+    init_op_rgb = {'training': training_init_op, 'validation': validation_init_op, 'testing': testing_init_op, 'gallery': gallery_init_op}
+    batches_per_epoch = {'training': tr_batches_per_epoch, 'validation': val_batches_per_epoch, 'testing': test_batches, 'gallery': gallery_batches}
 
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
     config = tf.ConfigProto(gpu_options=gpu_options)
@@ -225,11 +271,11 @@ for hp in set_params:
 
         x_rgb = tf.placeholder(tf.float32, [None, img_size[0], img_size[1], 3])
         x_depth = tf.placeholder(tf.float32, [None, img_size[0], img_size[1], 3])
-        y = tf.placeholder(tf.float32, [None, bs])
+        y = tf.placeholder(tf.float32, [None, num_classes])
 
         x_rgb = tf.reshape(x_rgb, [-1, img_size[0], img_size[1], 3])
         x_depth = tf.reshape(x_depth, [-1, img_size[0], img_size[1], 3])
-        y = tf.reshape(y, [-1, bs])
+        y = tf.reshape(y, [-1, num_classes])
 
         keep_prob = tf.placeholder(tf.float32)
         training_phase = tf.placeholder(tf.bool)
@@ -369,6 +415,9 @@ for hp in set_params:
                 rnn_input)
             preds = Dense(num_classes, activation='softmax', kernel_constraint=dense_kernel_constraint)(rnn_h)
 
+
+
+
         # Include keras-related metadata in the session
         K.set_session(sess)
 
@@ -421,15 +470,12 @@ for hp in set_params:
 
         lr_mult_conv1x1 = decayed_reg
 
-        '''# Loss
+
+        # Loss
         loss_l2 = l2_rnn + l2_conv1x1  # + l2_rgb + l2_depth
         loss_cls = tf.reduce_mean(categorical_crossentropy(y, preds))
+        loss = loss_cls  # + loss_l2
 
-        loss = loss_cls  # + loss_l2'''
-
-        labels = tf.cast(y, tf.int32)
-
-        loss = batch_hard_triplet_loss(labels, preds, 0.2, squared=False)
 
         train_step_rnn = tf.keras.optimizers.RMSprop(lr=decayed_lr).get_updates(loss=loss,
                                                                                 params=trainable_variables_rnn)
@@ -447,13 +493,14 @@ for hp in set_params:
         accuracy = tf.reduce_mean(categorical_accuracy(y, preds))
 
         # Create summaries for Tensorboard
-        #tf.summary.scalar("loss_cls", loss_cls)
-        #tf.summary.scalar("loss_l2", loss_l2)
-        tf.summary.scalar("loss", loss)
+        # tf.summary.scalar("loss_cls", loss_cls)
+        # tf.summary.scalar("loss_l2", loss_l2)
+        #tf.summary.scalar("loss", loss)
         tf.summary.scalar("accuracy", accuracy)
         tf.summary.scalar("learning rate", decayed_lr)
         tf.summary.scalar("lambda", decayed_reg)
         summary_op = tf.summary.merge_all()
+
 
         name = str(lr) + '_' + str(bs) + '_' + str(nn)
         train_writer = tf.summary.FileWriter(tensorboard_log + name + '/train/', graph=sess.graph)
@@ -467,19 +514,19 @@ for hp in set_params:
         model_rgb.load_params(sess, params_dir_rgb, trainable=True)
         model_depth.load_params(sess, params_dir_depth, trainable=True)
 
-        print("\nHyper-parameters: lr={}, #neurons={}, bs={}, l2={}, max_norm={}, dropout_rate={}, num_class={}".format(
-                lr, nn, bs, aa,mn, do, num_classes))
+        print("\nHyper-parameters: lr={}, #neurons={}, bs={}, l2={}, max_norm={}, dropout_rate={}, num_classes={}".format(
+            lr, nn, bs, aa, mn, do, num_classes))
         print("Number of trainable parameters = {}".format(
             count_params(trainable_variables_rnn) + count_params(trainable_variables_conv1x1) +
             count_params(trainable_variables_rgb) + count_params(trainable_variables_depth)))
 
         print("\n{} Generate features from training set".format(datetime.now()))
-        makelog = "Hyper-parameters: lr={}, #neurons={}, bs={}, l2={}, max_norm={}, dropout_rate={}, num_class={}".format(
-                lr, nn, bs, aa,mn, do, num_classes) + "\nNumber of trainable parameters = {}".format(
+        makelog = "Hyper-parameters: lr={}, #neurons={}, bs={}, l2={}, max_norm={}, dropout_rate={}, num_classes={}".format(
+            lr, nn, bs, aa, mn, do, num_classes) + "\nNumber of trainable parameters = {}".format(
             count_params(trainable_variables_rnn) + count_params(trainable_variables_conv1x1) +
             count_params(trainable_variables_rgb) + count_params(trainable_variables_depth)) + \
                   "\n{} Generate features from training set\n".format(datetime.now())
-        sLog(makelog,simpleLog)
+        sLog(makelog, simpleLog)
 
         tb_train_count = 0
         tb_val_count = 0
@@ -498,23 +545,27 @@ for hp in set_params:
         train_loss = 0
         train_acc = 0
         for i in range(tr_batches_per_epoch):
+
             bar.update(i + 1)
             tb_train_count += 1
             rgb_batch, depth_batch, label_batch = sess.run(next_batch)
+            current_batch_len = np.shape(rgb_batch)[0]
+            num_samples += current_batch_len
 
-            num_samples += np.shape(rgb_batch)[0]
             feed_dict = {x_rgb: rgb_batch, x_depth: depth_batch, y: label_batch, keep_prob: (1 - do),
                          training_phase: True, K.learning_phase(): 1}
             batch_loss, summary = sess.run([loss, summary_op], feed_dict=feed_dict)
-            train_loss += batch_loss
+
+
+            train_loss += (batch_loss * current_batch_len)
             train_writer.add_summary(summary, tb_train_count)
 
         bar.finish()
 
-        train_loss /= tr_batches_per_epoch  # num_samples
+        train_loss /= num_samples
         print("Training Loss = {}\n".format(train_loss))
         makelog = "Training Loss = {}\n".format(train_loss)
-        sLog(str(makelog),simpleLog)
+        sLog(str(makelog), simpleLog)
 
         val_acc = 0
         val_loss = 0
@@ -524,18 +575,19 @@ for hp in set_params:
         for i in range(val_batches_per_epoch):
             tb_val_count += 1
             rgb_batch, depth_batch, label_batch = sess.run(next_batch)
-            num_samples += np.shape(rgb_batch)[0]
+            current_batch_len = np.shape(rgb_batch)[0]
+            num_samples += current_batch_len
 
             feed_dict = {x_rgb: rgb_batch, x_depth: depth_batch, y: label_batch, keep_prob: 1.0, training_phase: False,
                          K.learning_phase(): 0}
             batch_loss, batch_acc, summary = sess.run([loss, accuracy, summary_op], feed_dict=feed_dict)
 
-            val_loss += batch_loss
-            val_acc += batch_acc
+            val_loss += (batch_loss * current_batch_len)
+            val_acc += (batch_acc * current_batch_len)
             val_writer.add_summary(summary, tb_val_count * (tr_batches_per_epoch / val_batches_per_epoch))
 
-        val_loss /= val_batches_per_epoch  # num_samples
-        val_acc /= val_batches_per_epoch  # num_samples
+        val_loss /= num_samples
+        val_acc /= num_samples
 
         print("{} Validation Loss : {}, Validation Accuracy = {:.4f}".format(datetime.now(), val_loss, val_acc))
         makelog = "\n{} Validation Loss : {}, Validation Accuracy = {:.4f}".format(datetime.now(), val_loss, val_acc)
@@ -549,7 +601,7 @@ for hp in set_params:
             print("\nEpoch: {}/{}".format(epoch + 1, num_epochs))
             makelog = "\n\nEpoch: {}/{}".format(epoch + 1, num_epochs)
             sLog(str(makelog), simpleLog)
-            
+
             sess.run(training_init_op)
 
             # Progress bar setting
@@ -564,24 +616,59 @@ for hp in set_params:
                 tb_train_count += 1
                 rgb_batch, depth_batch, label_batch = sess.run(next_batch)
 
-                num_samples += np.shape(rgb_batch)[0]
-
                 # apply data augmentation
-                data_aug(rgb_batch, depth_batch)
+                rgb_batch, depth_batch, label_batch = data_aug(rgb_batch, depth_batch, label_batch)
+
+                current_batch_len = np.shape(rgb_batch)[0]
+                num_samples += current_batch_len
+
+                '''#cv2.cvtColor(rgb_batch[i], cv2.COLOR_BGR2RGB)
+                for k in range(len(label_batch)):
+                    cv2.imshow('RgbAugSample' + str(k), rgb_batch[k])
+                    cv2.waitKey(0)'''
+
+                '''#cv2.cvtColor(rgb_batch[i], cv2.COLOR_BGR2RGB)
+                cv2.imshow('RgbAugSample', rgb_batch[i])
+                cv2.waitKey(0)'''
 
                 feed_dict = {x_rgb: rgb_batch, x_depth: depth_batch, y: label_batch, keep_prob: (1 - do),
                              training_phase: True, K.learning_phase(): 1}
-                batch_loss, _, summary, batch_acc_train = sess.run([loss, train_step, summary_op, accuracy],
+                classes = []
+
+                for i in range(len(label_batch)):
+                    # batchMatrix.append([])
+                    classes.append(getOriginalClass(label_batch[i]))
+
+                #prova = sess.run(rnn_h, feed_dict=feed_dict)
+
+                tloss = batch_hard_triplet_loss(classes, rnn_h, 0.2, squared=False)
+                if epoch == 0 and i == 0:
+
+                    train_step_rnn = tf.keras.optimizers.RMSprop(lr=decayed_lr).get_updates(loss=tloss,
+                                                                                        params=trainable_variables_rnn)
+                    train_step_conv1x1 = tf.keras.optimizers.RMSprop(lr=decayed_lr * lr_mult_conv1x1).get_updates(
+                        loss=tloss,
+                        params=trainable_variables_conv1x1)
+
+                    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                    with tf.control_dependencies(update_ops):
+                        train_step = tf.group(train_step_rnn, train_step_conv1x1, increment_global_step)
+
+
+                batch_loss, _, summary, batch_acc_train,batch_preds = sess.run([tloss, train_step, summary_op, accuracy,preds],
                                                                    feed_dict=feed_dict)
-                train_loss += batch_loss
-                train_acc += batch_acc_train
+
+                #t_loss = sess.run(tLoss,feed_dict=feed_dict)
+
+                train_loss += (batch_loss * current_batch_len)
+                train_acc += (batch_acc_train * current_batch_len)
 
                 train_writer.add_summary(summary, tb_train_count)
 
             bar.finish()
 
-            train_loss /= tr_batches_per_epoch  # num_samples
-            train_acc /= tr_batches_per_epoch
+            train_loss /= num_samples
+            train_acc /= num_samples
             loss_train.append(train_loss)
             acc_train.append(train_acc)
 
@@ -599,43 +686,55 @@ for hp in set_params:
                     tb_val_count += 1
                     rgb_batch, depth_batch, label_batch = sess.run(next_batch)
 
-                    num_samples += np.shape(rgb_batch)[0]
+                    current_batch_len = np.shape(rgb_batch)[0]
+                    num_samples += current_batch_len
 
                     feed_dict = {x_rgb: rgb_batch, x_depth: depth_batch, y: label_batch, keep_prob: 1.0,
                                  training_phase: False, K.learning_phase(): 0}
-                    batch_loss, batch_acc, summary, batch_preds = sess.run([loss, accuracy, summary_op, preds],
+
+                    classes = []
+                    for i in range(len(rgb_batch)):
+                        # batchMatrix.append([])
+                        classes.append(getOriginalClass(label_batch[i]))
+
+                    vLoss = batch_hard_triplet_loss(classes, rnn_h, 0.2, squared=False)
+
+                    batch_loss, batch_acc, summary, batch_preds = sess.run([vLoss, accuracy, summary_op, preds],
                                                                            feed_dict=feed_dict)
 
-                    val_loss += batch_loss
-                    val_acc += batch_acc
+
+                    #v_loss = sess.run(vLoss, feed_dict=feed_dict)
+
+                    val_loss += (batch_loss * current_batch_len)
+                    val_acc += (batch_acc * current_batch_len)
                     val_writer.add_summary(summary, tb_val_count * (tr_batches_per_epoch / val_batches_per_epoch))
 
-                val_loss /= val_batches_per_epoch  # num_samples
-                val_acc /= val_batches_per_epoch  # num_samples
+                val_loss /= num_samples
+                val_acc /= num_samples
                 loss_val.append(val_loss)
                 acc_val.append(val_acc)
 
                 print("{} Validation Loss : {}, Validation Accuracy = {:.4f}".format(datetime.now(), val_loss, val_acc))
-                
-                makelog = "\n{} Validation Loss : {}, Validation Accuracy = {:.4f}".format(datetime.now(), val_loss, val_acc)
+
+                makelog = "\n{} Validation Loss : {}, Validation Accuracy = {:.4f}".format(datetime.now(), val_loss,
+                                                                                           val_acc)
                 sLog(str(makelog), simpleLog)
-                
+
                 if val_loss < best_loss_val:
-                    best_saver.save(sess, "/content/drive/My Drive/RCFusionGPU/bestmodel/model")
+                    best_saver.save(sess, "C:/tmp/model_save/bestmodel/model")
                     best_loss_val = val_loss
-                    print("Best epoch:", epoch +1)
-            
+                    print("Best epoch:", epoch + 1)
+
                 # Early stopping
                 if epoch > patience:
                     count = 0
-                    for x in loss_val[epoch -patience: epoch]:
+                    for x in loss_val[epoch - patience: epoch]:
                         if val_loss > x - delta:
-                            count +=1
+                            count += 1
                             print(count)
                     if count == patience:
                         num_epochs = epoch + 1
                         break
-                            
 
             # Early stopping for ill-posed params combination
             if ((epoch == 0) and (val_acc < 0.2)) or ((epoch == 9) and (val_acc < 0.5)) or np.isnan(train_loss):
@@ -643,94 +742,119 @@ for hp in set_params:
                 makelog = "Training stopped due to poor results or divergence: validation accuracy = {}".format(val_acc)
                 sLog(str(makelog), simpleLog)
                 break
-            
-            
+
         fig1 = plt.figure(1)
         plt.title('Loss')
         plt.plot(loss_val, 'r', label='Validation Loss')
         plt.plot(loss_train, 'b', label='Training Loss')
         plt.legend(loc="upper right")
-        x = list(range(0, num_epochs+1, 5))
+        x = list(range(0, num_epochs + 1, 5))
         plt.xlim(right=num_epochs)
         plt.xticks(x)
         plt.grid(True)
         fig1.savefig("loss.png")
-        plt.show()
-
+        #plt.show()
 
         fig2 = plt.figure(2)
         plt.title('Accuracy')
         plt.plot(acc_val, 'r', label='Validation Accuracy')
         plt.plot(acc_train, 'b', label='Training Accuracy')
         plt.legend(loc="lower right")
-        x = list(range(0, num_epochs+1, 5))
+        x = list(range(0, num_epochs + 1, 5))
         plt.xlim(right=num_epochs)
         plt.xticks(x)
         plt.grid(True)
         fig2.savefig("accuracy.png")
-        plt.show()
-        
-        #TEST PHASE
-        #tf.reset_default_graph()
-        #saver = tf.train.import_meta_graph(sess, "/content/drive/My Drive/RCFusionGPU/bestmodel/model.meta")
+        #plt.show()
+
+        #RESTORE MODEL
         saver = tf.train.Saver()
-        saver.restore(sess, "/content/drive/My Drive/RCFusionGPU/bestmodel/model")
+        best_saver.save(sess, "C:/tmp/model_save/bestmodel/model")
         print("\nModel restored")
+
+        #GALLERY PHASE
+        sess.run(gallery_init_op)
+        num_samples = 0
+        gallery_val_count = 0
+        gallery_full_batch = []
+        gallery_features = []
+        for i in range(gallery_batches):
+            gallery_val_count += 1
+            rgb_batch, depth_batch, label_batch = sess.run(next_batch)
+
+            current_batch_len = np.shape(rgb_batch)[0]
+            num_samples += current_batch_len
+
+            feed_dict = {x_rgb: rgb_batch, x_depth: depth_batch, y: label_batch, keep_prob: 1.0, training_phase: False,
+                         K.learning_phase(): 0}
+            features = sess.run(rnn_h, feed_dict=feed_dict)
+
+            gallery_features.extend(features)
+            gallery_full_batch.extend(label_batch)
+
+        gallery_true_class = np.argmax(gallery_full_batch, axis =1)
+
+
+
+        # TEST PHASE
+        # tf.reset_default_graph()
+        # saver = tf.train.import_meta_graph(sess, "/content/drive/My Drive/RCFusionGPU/bestmodel/model.meta")
+
         sess.run(testing_init_op)
         num_samples = 0
-        test_loss = 0
-        test_acc = 0
         test_val_count = 0
-        full_batch = []
-        full_pred = []
+        full_label = []
+        test_features = []
+        dist_matrix = []
         for i in range(test_batches):
             test_val_count += 1
             rgb_batch, depth_batch, label_batch = sess.run(next_batch)
 
-            num_samples += np.shape(rgb_batch)[0]
+            current_batch_len = np.shape(rgb_batch)[0]
+            num_samples += current_batch_len
 
             feed_dict = {x_rgb: rgb_batch, x_depth: depth_batch, y: label_batch, keep_prob: 1.0, training_phase: False,
                          K.learning_phase(): 0}
-            batch_loss, batch_acc, summary, batch_preds = sess.run([loss, accuracy, summary_op, preds],
-                                                                   feed_dict=feed_dict)
+            batch_features = sess.run(rnn_h, feed_dict=feed_dict)
+            #test_features.append(features)
 
-            test_loss += batch_loss
-            test_acc += batch_acc
-            full_pred.extend(batch_preds)
-            full_batch.extend(label_batch)
-            
-        test_loss /= test_batches  #num_samples
-        test_acc /= test_batches
+            full_label.extend(label_batch)
 
-        
-         #y_score per ogni immagine contiene il valore di probabilitÃƒÂ  della classe vera
+            [dist_matrix.append(euclidean_distance(np.array(img_feature), np.array(gallery_features), gallery_true_class, num_classes, frames_gallery)) for img_feature in batch_features]
+
+        #dist_min = dist_matrix_avg(dist_matrix, frames_gallery)
+        dist_min = dist_matrix_min(dist_matrix, frames_gallery)
+
+        '''   # y_score per ogni immagine contiene il valore di probabilitÃƒÂ  della classe vera
         y_score = []
-        for i in range(0, len(full_batch)):
-            for k in range(0, len(full_batch[0])):
-                if int(full_batch[i][k]) == 1:
-                    y_score.append(float(full_pred[i][k]))
-                    
-        batchMatrix = defineImageRank(full_pred, full_batch)
+        for i in range(0, len(full_label)):
+            for k in range(0, len(full_label[0])):
+                if int(full_label[i][k]) == 1:
+                    y_score.append(float(full_pred[i][k]))'''
+
+        batchMatrix = defineImageRank1(dist_min, full_label)
         classList, num_of_frames = countTry(batchMatrix, num_classes)
         values = cmc_values(classList, num_of_frames)
         plot_cmc(values, "CMC", num_classes)
 
-        #y_true per ogni immagine contiene il nome della classe vera
-        #y_pred per ogni immagine contiene il nome della classe predetta
+        # y_true per ogni immagine contiene il nome della classe vera
+        # y_pred per ogni immagine contiene il nome della classe predetta
         y_true = []
         y_pred = []
-        for i in range(0, len(full_batch)):
-            y_true.append(batchMatrix[i][num_classes])    #classe vera
-            y_pred.append(batchMatrix[i][0])         #classe predetta
-        
-        
-        computeRoc(full_batch,full_pred,len(full_batch[0]))
+        for i in range(0, len(full_label)):
+            y_true.append(batchMatrix[i][num_classes])  # classe vera
+            y_pred.append(batchMatrix[i][0])  # classe predetta
+
+        test_acc = accuracy_score(y_true, y_pred)
+
+        #computeRoc(full_label, full_pred, len(full_label[0]))
+
         class_rep = classification_report(y_true, y_pred)
 
-        print("\n{} Testing Loss : {}, Testing Accuracy = {:.4f}".format(datetime.now(), test_loss, test_acc))
-        makelog = "\n\n{} Testing Loss : {}, Testing Accuracy = {:.4f}".format(datetime.now(), test_loss, test_acc)
+        print("\n{} Gallery testing Accuracy = {:.4f}".format(datetime.now(), test_acc))
+        makelog = "\n\n{} Gallery testing Accuracy = {:.4f}".format(datetime.now(), test_acc)
         sLog(str(makelog), simpleLog)
-        
+
         print("\n" + class_rep)
         makelog = "\n\n" + class_rep
         sLog(str(makelog), simpleLog)
