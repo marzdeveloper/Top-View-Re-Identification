@@ -2,7 +2,7 @@ import csv
 import random
 
 path = "C:/Users/Daniele/Desktop/finale.csv" #path al csv
-txt_path = "C:/Users/Daniele/Desktop/Febbraio finale/txt/gallery/50id_50foto/"
+txt_path = "C:/Users/Daniele/Desktop/Febbraio finale/txt/gallery/100id_50foto/"
 #csv_dest_path = "C:/Users/Daniele/Desktop/Dataset_gennaio/result_gennaio_1060_foto7.csv"
 
 min = 50 #numero minimo di foto per classe
@@ -10,7 +10,7 @@ max = 50 #numero massimo di foto per classe
 gallery_photo = 5 #numero di foto per classe nella gallery (minore o uguale di min)
 
 
-max_id = 50
+max_id = 100
 i = 0
 count = 0
 in_file = open(path)
@@ -43,7 +43,6 @@ for row in csvreader:
         else:
             max_foto = (len(row) - 3)
         directory = row[0]
-        row = row[3:]
         if int(directory) in pippo:
             row = row[3:]
             apache = random.sample(row, min)
