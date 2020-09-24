@@ -15,7 +15,7 @@ A. Labeller engine
 B. Txt creator
 C. Preprocessing script
 D. Custom RCFusion network  https://github.com/MRLoghmani/rcfusion
-E. Colab
+E. Run Custom RCFusion network in Colab https://colab.research.google.com/
 
 A. Labeller engine
 
@@ -120,6 +120,16 @@ test_file = dataset_test_dir + 'cartella/contenente/test.txt'
 
 gallery_file = dataset_train_dir_rgb + 'cartella/contenente/gallery.txt'
 **---------------------------------------------------------**
+
+E. Run Custom RCFusion network in Colab
+
+Colab.ipynb: this script contain instructions to run the network in google colab.
+
+
+
+
+
+
 
 
 
