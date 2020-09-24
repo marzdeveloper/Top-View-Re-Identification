@@ -38,7 +38,7 @@ def main():
 
 
 
-    print("BOOOOOOOOOO="+os.path.dirname(__file__))
+    print(os.path.dirname(__file__))
     images_folders = [k for k in sorted(os.listdir(os.path.join(os.path.dirname(__file__), image_path)), key=int)
                       if len(os.listdir(os.path.join(os.path.dirname(__file__), image_path, k)))/2 >= min_images and
                       int(sorted(os.listdir(os.path.join(os.path.dirname(__file__), image_path, k)),
