@@ -3,11 +3,11 @@ import random
 
 path_train = "C:/Users/Daniele/Desktop/TVPR2/train.csv" #path al csv di train
 path_test = "C:/Users/Daniele/Desktop/TVPR2/test.csv" #path al csv di test
-txt_path = "C:/Users/Daniele/Desktop/TVPR2/txt/random/50id_50foto1/"
+txt_path = "C:/Users/Daniele/Desktop/TVPR2/txt/random/50id_50foto6/"
 #csv_dest_path = "C:/Users/Daniele/Desktop/Dataset_gennaio/result_gennaio_1060_foto7.csv"
 
-min = 60 #numero minimo di foto per classe
-max = 60 #numero massimo di foto per classe
+min = 50 #numero minimo di foto per classe
+max = 50 #numero massimo di foto per classe
 gallery_photo = 5 #numero di foto per classe nella gallery (minore o uguale di min)
 
 max_id=50
@@ -51,7 +51,7 @@ for row in csvreader_train:
             for i, photo in enumerate(gallery_apache):
                 gallery_file.write(directory + '/' + photo.strip('_rgb.jpg') + ' ' + str(count_train) + '\n')
             for i, photo in enumerate(apache):
-                if i < int(0.84*max):#max o max_foto ?
+                if i < int(0.75*max):#max o max_foto ?
                     train_file.write(directory + '/' + photo.strip('_rgb.jpg') + ' ' + str(count_train) + '\n')
                 else:
                     val_file.write(directory + '/' + photo.strip('_rgb.jpg') + ' ' + str(count_train) + '\n')
