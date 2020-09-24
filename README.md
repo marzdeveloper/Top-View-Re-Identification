@@ -17,9 +17,9 @@ This repository contain:
 -D. Custom RCFusion network  https://github.com/MRLoghmani/rcfusion
 -E. Run Custom RCFusion network in Colab https://colab.research.google.com/
 
--A. Labeller engine
+- A. Labeller engine
 
---1a Main2.py: can be found inside Labellatore folder, given a dataset folder, it's used to exlude bad frames and unify ids from same people, his output will be a csv file cointaining "original id", "new id","warning","name of images".
+-- 1a Main2.py: can be found inside Labellatore folder, given a dataset folder, it's used to exlude bad frames and unify ids from same people, his output will be a csv file cointaining "original id", "new id","warning","name of images".
           
 --1b make_csv.py: can be found inside Gestore_csv folder it can be used if the the dataset is already labelled, given the path to the dataset, it generate csv file needed in "Txt creator".          
           
