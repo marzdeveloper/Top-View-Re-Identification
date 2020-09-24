@@ -11,40 +11,40 @@ Scikit-learn 0.19.2
 Cuda 9 + CudNN
 
 This repository contain: 
-A. Labeller engine
-B. Txt creator
-C. Preprocessing script
-D. Custom RCFusion network  https://github.com/MRLoghmani/rcfusion
-E. Run Custom RCFusion network in Colab https://colab.research.google.com/
+-A. Labeller engine
+-B. Txt creator
+-C. Preprocessing script
+-D. Custom RCFusion network  https://github.com/MRLoghmani/rcfusion
+-E. Run Custom RCFusion network in Colab https://colab.research.google.com/
 
-A. Labeller engine
+-A. Labeller engine
 
-1a Main2.py: can be found inside Labellatore folder, given a dataset folder, it's used to exlude bad frames and unify ids from same people, his output will be a csv file cointaining "original id", "new id","warning","name of images".
+--1a Main2.py: can be found inside Labellatore folder, given a dataset folder, it's used to exlude bad frames and unify ids from same people, his output will be a csv file cointaining "original id", "new id","warning","name of images".
           
-1b make_csv.py: can be found inside Gestore_csv folder it can be used if the the dataset is already labelled, given the path to the dataset, it generate csv file needed in "Txt creator".          
+--1b make_csv.py: can be found inside Gestore_csv folder it can be used if the the dataset is already labelled, given the path to the dataset, it generate csv file needed in "Txt creator".          
           
-2. move_files.py:  can be found inside Labellatore folder, take csv file produced by Main2.py and a dataset folder, it copy frames from their original directory to a new one, frames with same "new id" will be set inside the same folder, frames ignored in the previous step will not be considered.
+--2. move_files.py:  can be found inside Labellatore folder, take csv file produced by Main2.py and a dataset folder, it copy frames from their original directory to a new one, frames with same "new id" will be set inside the same folder, frames ignored in the previous step will not be considered.
 
-B. Txt creator: 
+-B. Txt creator: 
 
 make_txt_from_csv**.py: can be found inside Gestore_csv folder, given the path to csv generated in 1a or 1b, it produces txt files used to divide dataset in train, validation, test and gallery collections.
 
-C. Preprocessing script
+-C. Preprocessing script
 
 preprocess_cv.py: Before feeding the network a preprocess phase can occurr; given a set of images, this script find the biggest subject inside each frames and than apply a black mask on the background in order to remove noise. For depth images colormap jet is applied. 
 
-D. Custom RCFusion network
+-D. Custom RCFusion network
 
-The network need:
-resnet18_ocid_params
-txt collections generated in B
-dataset path structured in subfolders
+--The network need:
+--resnet18_ocid_params
+--txt collections generated in B
+--dataset path structured in subfolders
 
 The network is inside FinalGalleryDataAug folder, it cointains tree variations of the original RCFusion network inside different folders: 
 **creare la struttura a cartelle e rinominare i file**
-train_and_eval folder contains the modified network, it can be tested running train_and_eval.py script. 
-train_and_eval_dataaug contain a variation with data augmentation applied, it can be tested running train_and_eval_dataaug.py script.
-train_and_eval_gallery cointain a variation with data augmentation and gallery, it can be tested running train_and_eval_gallery.py script.
+-train_and_eval folder contains the modified network, it can be tested running train_and_eval.py script. 
+-train_and_eval_dataaug contain a variation with data augmentation applied, it can be tested running train_and_eval_dataaug.py script.
+-train_and_eval_gallery cointain a variation with data augmentation and gallery, it can be tested running train_and_eval_gallery.py script.
 
 Before starting the network some paramethers have to be specified:
 
@@ -60,8 +60,8 @@ or  dataset_root_dir = "path/to/RealShopdataset/"
 **TVPR2 Path settings:**
 
 main folder of TVPR2 dataset must contain 
-test folder: where are stored test frames grouped in subfolders by person ID, and a folder containing test.txt produced in B
-train folder: where are stored gallery,train,and validation frames grouped in subfolders by person ID, and a folder containing gallery.txt,train.txt,and validation.txt produced in B (gallery if needed).
+-test folder: where are stored test frames grouped in subfolders by person ID, and a folder containing test.txt produced in B
+-train folder: where are stored gallery,train,and validation frames grouped in subfolders by person ID, and a folder containing gallery.txt,train.txt,and validation.txt produced in B (gallery if needed).
 
 
 params_root_dir = "path/to/resnet18_ocid_params"
