@@ -50,9 +50,9 @@ params_dir_rgb = params_root_dir + '/resnet18_ocid_rgb++_params.npy'
 params_dir_depth = params_root_dir + '/resnet18_ocid_surfnorm++_params.npy'
 
 
-train_file = dataset_train_dir_rgb + 'train500.txt'
-val_file = dataset_val_dir_rgb + 'val500.txt'
-test_file = dataset_test_dir + 'test500.txt'
+train_file = dataset_train_dir_rgb + 'train50.txt'
+val_file = dataset_val_dir_rgb + 'val50.txt'
+test_file = dataset_test_dir + 'test50.txt'
 
 pathToSavedModel = "C:/tmp/model_save/bestmodel/model"
 
@@ -79,7 +79,7 @@ checkpoint_dir = "/tmp/my_caffenet/"
 if not os.path.isdir(checkpoint_dir): os.mkdir(checkpoint_dir)
 
 # Input/Output
-num_classes = 500
+num_classes = 5
 img_size = [224, 224]
 num_channels = 3
 
@@ -619,14 +619,6 @@ for hp in set_params:
                         num_epochs = epoch + 1
                         break
 
-            # Early stopping for ill-posed params combination
-            '''
-            if ((epoch == 0) and (val_acc < 0.2)) or ((epoch == 9) and (val_acc < 0.5)) or np.isnan(train_loss):
-                print("Training stopped due to poor results or divergence: validation accuracy = {}".format(val_acc))
-                makelog = "Training stopped due to poor results or divergence: validation accuracy = {}".format(val_acc)
-                sLog(str(makelog), simpleLog)
-                break
-            '''
         fig1 = plt.figure(1)
         plt.title('Loss')
         plt.plot(loss_val, 'r', label='Validation Loss')

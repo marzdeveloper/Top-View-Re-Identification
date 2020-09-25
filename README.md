@@ -4,7 +4,7 @@
 
 This network is used for top-view person re-identification, it has been tested on RealShop and TVPR2 datasets. The network is a custom version of RCFusion. [link](https://github.com/MRLoghmani/rcfusion)
 
-## Dependencies:
+## Requirements:
 
 1. *Python 3.6*
 2. *Keras 2.2.4*
