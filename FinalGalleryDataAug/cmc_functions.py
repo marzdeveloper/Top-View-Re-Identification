@@ -25,15 +25,36 @@ def sLog(data,name):
 
 
 def plot_cmc(values, title, ranks):
-    if ranks > len(values):
-        rank = len(values)
+    value4 = []
+    value9 = []
+    value19 = []
+    if len(values) > 19:
+        if ranks > len(values):
+            rank = len(values)
+        else:
+            rank = ranks
+        value4.append(values[4])
+        value9.append(values[9])
+        value19.append(values[19])
+        new_color = ['w', 'r', 'w', 'w']
+        new_marker = ['', '*', '', '']
+        cmc_dict = {
+            "at Rank 1" : values,
+            "at Rank 5" : value4,
+            "at Rank 10" : value9,
+            "at Rank 20" : value19
+        }
+        cmc = CMC(cmc_dict, color=new_color, marker=new_marker)
     else:
-        rank = ranks
-    cmc_dict = {
-        "at Rank 1": values
-    }
-    cmc = CMC(cmc_dict)
-    cmc.plot(title=title, rank=rank)
+        if ranks > len(values):
+            rank = len(values)
+        else:
+            rank = ranks
+        cmc_dict = {
+            "at Rank 1" : values
+        }
+        cmc = CMC(cmc_dict)
+    cmc.plot(title = title, rank = rank)
 
 
 def getOriginalClass(label_batch):
