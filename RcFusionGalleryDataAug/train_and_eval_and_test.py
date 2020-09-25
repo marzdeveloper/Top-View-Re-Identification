@@ -23,7 +23,7 @@ from keras.metrics import categorical_accuracy
 from keras import backend as K
 from cmc_functions import defineImageRank, defineImageRank1, cmc_values, plot_cmc, countTry
 from tensorflow.python.client import device_lib
-from sklearn.metrics import classification_report, accuracy_score
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 
 import matplotlib.pyplot as plt
 import cv2
@@ -703,6 +703,12 @@ for hp in set_params:
         test_acc = accuracy_score(y_true, y_pred)
 
         class_rep = classification_report(y_true, y_pred)
+        
+        class_names = []
+        for i in range(0, num_classes):
+            class_names.append(i)
+        cnf_matrix = confusion_matrix(y_true, y_pred)
+        plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=True, title='Confusion matrix')
 
         print("\n{} Gallery testing Accuracy = {:.4f}".format(datetime.now(), test_acc))
         makelog = "\n\n{} Gallery testing Accuracy = {:.4f}".format(datetime.now(), test_acc)

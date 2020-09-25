@@ -21,7 +21,7 @@ from keras.optimizers import RMSprop
 from keras.layers import LSTM, GRU, Dense, Dropout
 from keras.metrics import categorical_accuracy
 from keras import backend as K
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix
 from cmc_functions import defineImageRank , cmc_values , plot_cmc , countTry
 from tensorflow.python.client import device_lib
 
@@ -49,10 +49,12 @@ params_dir_rgb = params_root_dir + '/resnet18_ocid_rgb++_params.npy'
 
 params_dir_depth = params_root_dir + '/resnet18_ocid_surfnorm++_params.npy'
 
-# todo occhio ai file
+
 train_file = dataset_train_dir_rgb + 'train500.txt'
 val_file = dataset_val_dir_rgb + 'val500.txt'
 test_file = dataset_test_dir + 'test500.txt'
+
+pathToSavedModel = "C:/tmp/model_save/bestmodel/model"
 
 # Log params
 tensorboard_log = '/content/tmp/tensorflow/'
@@ -602,7 +604,7 @@ for hp in set_params:
                 sLog(str(makelog), simpleLog)
 
                 if val_loss < best_loss_val:
-                    best_saver.save(sess, "/content/drive/My Drive/RCFusionGPU/Model/model.ckpt")
+                    best_saver.save(sess, pathToSavedModel)
                     best_loss_val = val_loss
                     print("Best epoch:", epoch +1)
 
@@ -655,7 +657,7 @@ for hp in set_params:
         # tf.reset_default_graph()
         # saver = tf.train.import_meta_graph(sess, "/content/drive/My Drive/RCFusionGPU/bestmodel/model.meta")
         saver = tf.train.Saver()
-        saver.restore(sess, "/content/drive/My Drive/RCFusionGPU/Model/model.ckpt")
+        saver.restore(sess, pathToSavedModel)
         print("\nModel restored")
         sess.run(testing_init_op)
         num_samples = 0
@@ -700,8 +702,13 @@ for hp in set_params:
             y_true.append(batchMatrix[i][num_classes])      #classe vera
             y_pred.append(batchMatrix[i][0])                #classe predetta
 
-        computeRoc(full_batch,full_pred,len(full_batch[0]))
         class_rep = classification_report(y_true, y_pred)
+        
+        class_names = []
+        for i in range(0, num_classes):
+            class_names.append(i)
+        cnf_matrix = confusion_matrix(y_true, y_pred)
+        plot_confusion_matrix(cnf_matrix, classes=class_names, normalize=True, title='Confusion matrix')
 
         print("\n{} Testing Loss : {}, Testing Accuracy = {:.4f}".format(datetime.now(), test_loss, test_acc))
         makelog = "\n\n{} Testing Loss : {}, Testing Accuracy = {:.4f}".format(datetime.now(), test_loss, test_acc)
