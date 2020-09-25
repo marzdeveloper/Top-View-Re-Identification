@@ -144,6 +144,12 @@ def computeRoc(full_batch, full_pred, num_classes):
     #fig3.savefig("roc.png")
     plt.close(fig3)
 
+
+
+#calcola la distanza euclidea tra due feature vector
+#vector_1 è un vettore delle feature relativo ad un'immagine
+#vector_2 è un vettore di vettori di feature, relative alla galleria
+#dist è una matrice con num_classes righe e frames_gallery colonne
 def euclidean_distance(vector_1, vector_2, label, num_classes, frames_gallery):
     dist = []
     for clas in range(num_classes):
@@ -156,6 +162,9 @@ def euclidean_distance(vector_1, vector_2, label, num_classes, frames_gallery):
                     break
     return dist
 
+
+#a partire dalla matrice delle distanze trova la distanza minima tra ogni frames della gallery della stessa classe e le immagini di test
+#restituisce una matrice che contiene solo la distaza minima, quindi non più frames_gallery per classe nella gallery ma una per classe nella gallery
 def dist_matrix_min(dist, frames_gallery):
     x = []
     for i, item in enumerate(dist):
@@ -164,6 +173,8 @@ def dist_matrix_min(dist, frames_gallery):
             x[i].append(min(item[j:j + frames_gallery]))
     return x
 
+#a partire dalla matrice delle distanze calcola la distanza media tra ogni frames della gallery della stessa classe e le immagini di test
+#restituisce una matrice che contiene solo le distaza medie, quindi non più frames_gallery per classe nella gallery ma una per classe nella gallery
 def dist_matrix_avg(dist, frames_gallery):
     x = []
     for i, item in enumerate(dist):
