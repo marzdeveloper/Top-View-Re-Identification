@@ -52,17 +52,18 @@ Before starting the network some paramethers have to be specified:
 - If you are using .jpg frames (such as TVPR2 dataset), you have to be sure to import image_data_handler_joint_multimodal_jpg* version
 
 
-**-------------------Data-related params-------------------**
-**---------------------------------------------------------**
+## -------------------Data-related params-------------------
+
 
 or  dataset_root_dir = "path/to/RealShopdataset/"
 
 ## TVPR2 Path settings:
 
 main folder of TVPR2 dataset must contain 
--test folder: where are stored test frames grouped in subfolders by person ID, and a folder containing test.txt produced in B
--train folder: where are stored gallery,train,and validation frames grouped in subfolders by person ID, and a folder containing gallery.txt,train.txt,and validation.txt produced in B (gallery if needed).
+1. *test folder*: where are stored test frames grouped in subfolders by person ID, and a folder containing test.txt produced in B
+2. *train folder*: where are stored gallery,train,and validation frames grouped in subfolders by person ID, and a folder containing gallery.txt,train.txt,and validation.txt produced in B (gallery if needed).
 
+## Specify the following paths:
 
 params_root_dir = "path/to/resnet18_ocid_params"
 dataset_root_dir = "path/to/TVPR2dataset"    
@@ -71,7 +72,7 @@ dataset_train_dir_rgb = dataset_root_dir + '/train/'
 dataset_val_dir_rgb = dataset_root_dir + '/train/'
 dataset_test_dir = dataset_root_dir + '/test/'
 
-- specify resnet18 paramethers names
+## specify resnet18 paramethers names
 params_dir_rgb = params_root_dir + '/resnet18_ocid_rgb++_params.npy'
 params_dir_depth = params_root_dir + '/resnet18_ocid_surfnorm++_params.npy'
 
@@ -102,18 +103,16 @@ dataset_train_dir_rgb = dataset_root_dir
 dataset_val_dir_rgb = dataset_root_dir 
 dataset_test_dir = dataset_root_dir
 
-- specify resnet18 paramethers names
+## specify resnet18 paramethers names
 params_dir_rgb = params_root_dir + '/resnet18_ocid_rgb++_params.npy'
 params_dir_depth = params_root_dir + '/resnet18_ocid_surfnorm++_params.npy'
 
 pathToSavedModel = "path/to/saved/model"
 
-- Checkpoint dir
 checkpoint_dir = "/specify/checkpoint/dir/"
-- log dir
 simpleLog = "path/to/log/dir/Log_Name.txt"
 
-- specify names of folders containing txt files 
+# specify names of folders containing txt files 
 train_file = dataset_train_dir_rgb + 'cartella/contenente/train.txt'
 val_file = dataset_val_dir_rgb + 'cartella/contenente/val.txt'
 test_file = dataset_test_dir + 'cartella/contenente/test.txt'
@@ -121,7 +120,7 @@ test_file = dataset_test_dir + 'cartella/contenente/test.txt'
 gallery_file = dataset_train_dir_rgb + 'cartella/contenente/gallery.txt'
 **---------------------------------------------------------**
 
-- E. Run Custom RCFusion network in Colab
+## E. Run Custom RCFusion network in Colab
 
 Colab.ipynb: this script contain instructions to run the network in google colab.
 
