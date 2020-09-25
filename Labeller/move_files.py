@@ -31,27 +31,36 @@ def move(result_file, src, dst, filter, result_path):
 
 
 def main():
-    p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description="")
-    p.add_argument('-result', dest='result', action='store', default='results', help='result path folder')
-    p.add_argument('-src', dest='source', action='store', default='src', help='source path')
-    p.add_argument('-dst', dest='destination', action='store', default='dataset', help='output path')
-    p.add_argument('--filter', default=False, action='store_true')
+    #p = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description="")
+    #p.add_argument('-result', dest='result', action='store', default='results', help='result path folder')
+    #p.add_argument('-src', dest='source', action='store', default='src', help='source path')
+    #p.add_argument('-dst', dest='destination', action='store', default='dataset', help='output path')
+    #p.add_argument('--filter', default=False, action='store_true')
 
-    args = p.parse_args()
-    if not os.path.exists(os.path.join(os.path.dirname(__file__), args.source)):
+    #args = p.parse_args()
+
+    pathToDatasetFolder = "C:/Users/Nico/Desktop/Computer vision/Progetto/Locale/Dataset_source/gennaio"
+    pathToCsvFolder = "C:/Users/Nico/Desktop/Computer vision/Progetto/Locale/csv/csv_gennaio"
+    pathToDestinationFolder = "C:/Users/Nico/Desktop/Computer vision/Progetto/Locale/Dataset_labellato/gennaio"
+
+    source = pathToDatasetFolder
+    result = pathToCsvFolder
+    destination = pathToDestinationFolder
+
+    if not os.path.exists(os.path.join(os.path.dirname(__file__), source)):
         print("Source path does not exist! Aborting")
         sys.exit(1)
 
-    list_result_files = os.listdir(os.path.join(os.path.dirname(__file__), args.result))
+    list_result_files = os.listdir(os.path.join(os.path.dirname(__file__), result))
 
     files_archive = []
     for result_f in list_result_files:
         print('Moving folders for file', result_f)
-        move(result_f, args.source, args.destination, args.filter, args.result)
-        files_archive.append(os.path.join(args.destination, result_f.split('.')[0][7:] + '_clean'))
+        move(result_f, source, destination, filter, result)
+        files_archive.append(os.path.join(destination, result_f.split('.')[0][7:] + '_clean'))
 
-    print('All files moved, now archiving')
-    subprocess.call(['7z', 'a', 'archive.7z', '-v1900m'] + files_archive)
+    print('Files moved')
+    #subprocess.call(['7z', 'a', 'archive.7z', '-v1900m'] + files_archive)
 
 
 if __name__ == '__main__':
