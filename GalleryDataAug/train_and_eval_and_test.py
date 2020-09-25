@@ -5,7 +5,7 @@ import random
 import scipy
 from datetime import datetime
 import progressbar
-from image_data_handler_joint_multimodal_jpg1 import ImageDataHandler
+from image_data_handler_joint_multimodal_jpg import ImageDataHandler
 from resnet18 import ResNet
 from layer_blocks import *
 from tensorflow.data import Iterator
@@ -21,10 +21,8 @@ from keras.optimizers import RMSprop
 from keras.layers import GRU, Dense, Dropout
 from keras.metrics import categorical_accuracy
 from keras import backend as K
-from sklearn.metrics import classification_report
-from cmc_functions import defineImageRank, cmc_values, plot_cmc, countTry
+from cmc_functions import defineImageRank, defineImageRank1, cmc_values, plot_cmc, countTry
 from tensorflow.python.client import device_lib
-from cmc_functions import defineImageRank1
 from sklearn.metrics import classification_report, accuracy_score
 
 import matplotlib.pyplot as plt
@@ -65,8 +63,8 @@ gallery_file = dataset_train_dir_rgb + '0_50id_50f_gallery5f/gallery.txt'
 
 # Solver params
 learning_rate = [[0.0001]]
-num_epochs = 1  # 50
-batch_size = [[96]]  # 32
+num_epochs = 50  # 50
+batch_size = [[96]]  # 96
 num_neurons = [[100]]
 l2_factor = [[0.0]]
 maximum_norm = [[4]]
@@ -703,8 +701,6 @@ for hp in set_params:
             y_pred.append(batchMatrix[i][0])  # classe predetta
 
         test_acc = accuracy_score(y_true, y_pred)
-
-        # computeRoc(full_label, full_pred, len(full_label[0]))
 
         class_rep = classification_report(y_true, y_pred)
 
