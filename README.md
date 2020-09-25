@@ -118,7 +118,7 @@ val_file = dataset_val_dir_rgb + 'cartella/contenente/val.txt'
 test_file = dataset_test_dir + 'cartella/contenente/test.txt'
 
 gallery_file = dataset_train_dir_rgb + 'cartella/contenente/gallery.txt'
-**---------------------------------------------------------**
+## ---------------------------------------------------------
 
 ## E. Run Custom RCFusion network in Colab
 
