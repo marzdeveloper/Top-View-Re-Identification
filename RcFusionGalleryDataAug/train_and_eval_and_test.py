@@ -51,10 +51,10 @@ pathToSavedModel = "C:/tmp/model_save/bestmodel/model"
 
 # Checkpoint dir
 checkpoint_dir = "/tmp/my_caffenet/"
-#log dir
+# log dir
 simpleLog = "C:/Users/lorca/PycharmProjects/Log.txt"
 
-# todo occhio ai file
+
 train_file = dataset_train_dir_rgb + '0_50id_50f_gallery5f/train.txt'
 val_file = dataset_val_dir_rgb + '0_50id_50f_gallery5f/val.txt'
 test_file = dataset_test_dir + '0_50id_50f_gallery5f/test.txt'

@@ -619,7 +619,7 @@ for hp in set_params:
         # tf.reset_default_graph()
         # saver = tf.train.import_meta_graph(sess, "/content/drive/My Drive/RCFusionGPU/bestmodel/model.meta")
         saver = tf.train.Saver()
-        saver.restore(sess, pathToSavedModel")
+        saver.restore(sess, pathToSavedModel)
         print("\nModel restored")
         sess.run(testing_init_op)
         num_samples = 0
@@ -640,9 +640,6 @@ for hp in set_params:
                                                                    feed_dict=feed_dict)
 
 
-
-
-            print(" len label_batch", len(label_batch))
             test_loss += batch_loss
             test_acc += batch_acc
             full_pred.extend(batch_preds)

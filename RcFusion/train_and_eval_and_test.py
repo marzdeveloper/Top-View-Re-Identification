@@ -678,9 +678,6 @@ for hp in set_params:
                                                                    feed_dict=feed_dict)
 
 
-
-
-            print(" len label_batch", len(label_batch))
             test_loss += batch_loss
             test_acc += batch_acc
             full_pred.extend(batch_preds)
