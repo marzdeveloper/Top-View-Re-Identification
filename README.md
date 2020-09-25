@@ -1,4 +1,4 @@
-# TesinaCv-DL
+# Top-View-Re-Identification
 This network is used for top-view person re-identification, it has been tested on RealShop and TVPR2 datasets.
 
 ## Dependencies:
