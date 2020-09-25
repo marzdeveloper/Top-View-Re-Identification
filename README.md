@@ -11,11 +11,11 @@ Scikit-learn 0.19.2
 Cuda 9 + CudNN
 
 ## This repository contain: 
--A. Labeller engine
--B. Txt creator
--C. Preprocessing script
--D. Custom RCFusion network  https://github.com/MRLoghmani/rcfusion
--E. Run Custom RCFusion network in Colab https://colab.research.google.com/
+- *A*. Labeller engine
+- *B*. Txt creator
+- *C*. Preprocessing script
+- *D*. Custom RCFusion network  [link](https://github.com/MRLoghmani/rcfusion) 
+- *E*. Run Custom RCFusion network in Colab [link](https://colab.research.google.com/)  
 
 ## A. Labeller engine
 
