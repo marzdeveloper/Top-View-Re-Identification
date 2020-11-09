@@ -52,10 +52,10 @@ for row in csvreader_test:
     directory = row[0]
     row = row[3:]
     if directory in dict.keys():
-        if (len(row) - 3) > max:
+        if (len(row)) > max:
             max_foto = max
         else:
-            max_foto = (len(row) - 3)
+            max_foto = (len(row))
         apache = random.sample(row, max_foto)
         for photo in apache:
             test_file.write(directory + '/' + photo.strip('_rgb.jpg') + ' ' + str(dict[directory]) + '\n')

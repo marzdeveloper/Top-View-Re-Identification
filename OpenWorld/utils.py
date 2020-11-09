@@ -3,9 +3,9 @@ import operator
 from functools import reduce
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
-import numpy as np
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import itertools
+import numpy as np
 
 def load_params(dir):
     return np.load(dir).item()
@@ -59,6 +59,7 @@ def collect_features(sess, feed_dict, nodes, labels, collection):
 def prepare_sequence(names, features, batch_size):
     """
     Transform dictionary of features in sequential input for recurrent networks.
+
     names: ORDERED list of string with the name of features for sequence
     features: dict of ndarrays -- key = layer name, value = (samples x feature size)
     batch_size: desired batch size for the returned sequence
@@ -108,7 +109,7 @@ def sLog(data, name):
 
 
 # allLabel:  vettore grande quanto il n di foto del test, contiene la classe originale
-# allPredsProb:  vettore grande quanto il n di foto del test, contiene il vettore di probabilitÃƒÂ  delle classi
+# allPredsProb:  vettore grande quanto il n di foto del test, contiene il vettore di probabilitÃƒÂ  delle classi
 # numclasses da modificare(?)
 # alllabel = fullbatch
 def computeRoc(full_batch, full_pred, num_classes):
@@ -185,6 +186,121 @@ def dist_matrix_avg(dist, frames_gallery):
     return x
 
 
+#per calcolare le distanze intra-gallery
+def compute_distance_intra_gallery(vector_1, label, frames_gallery):
+    dist = []
+    for i, embedding in enumerate(vector_1):
+            count = 0
+            clas = label[i]
+            for j, item in enumerate(label):
+                if item == clas:
+                    dist.append(np.linalg.norm(embedding-vector_1[j]))
+                    count += 1
+                    if count == frames_gallery:
+                        break
+    return dist
+
+
+
+def compute_adpative_thresholds(dist, label, num_classes, frames_gallery):
+    threshold = []
+    standard = []
+    for i in range(num_classes):
+        temp = []
+        for j, item in enumerate(label):
+            if i == item:
+                temp.extend(dist[j*frames_gallery:j*frames_gallery + frames_gallery])
+        temp = [i for i in temp if i != 0]
+        #applico la funzione per la threshold
+
+        #threshold.append(max(temp))
+        #threshold.append(min(temp))
+        threshold.append(sum(temp)/len(temp))
+
+        #calcola dev. standard
+        avg = sum(temp)/len(temp)
+        somma = 0
+        for x in temp:
+            somma += pow(x-avg, 2)
+        standard.append(pow(somma/(len(temp)-1), 0.5))
+    return threshold, standard
+
+def compute_ttr_ftr(full_label, full_preds, thresholds, num_classes, intrusi, standard):
+    full_label = np.argmax(full_label, axis=1)
+    dim_target_images, dim_non_target_images = 0, 0
+    for item in full_label:
+        if item >= num_classes - intrusi:
+            dim_non_target_images += 1
+        else:
+            dim_target_images += 1
+    numClasses = int(len(full_preds[0]))
+    rank = np.zeros(shape=(numClasses, 2))
+    ttr, ftr = 0,0
+
+    x = open("C:/Users/Daniele/Desktop/tvpr2_100id.txt", "w")
+
+    results = []
+    [results.append([]) for x in range(num_classes)]
+    avg = sum(standard)/len(standard)
+
+    for i in range(len(full_preds)):
+        trueClass = full_label[i]
+        for j in range(0, numClasses):
+            rank[j][0] = j
+            rank[j][1] = full_preds[i][j]
+        rank_sorted = rank[np.argsort(rank[:, 1])]
+        results[trueClass].append(rank_sorted[0][1])
+
+        #adaptive threshold
+        '''
+        if rank_sorted[0][1] < thresholds[int(rank_sorted[0][0])] + standard[int(rank_sorted[0][0])] >= num_classes - intrusi:
+            ftr += 1
+        if rank_sorted[0][1] < thresholds[int(rank_sorted[0][0])] + standard[int(rank_sorted[0][0])] and trueClass < num_classes - intrusi and trueClass == int(rank_sorted[0][0]):
+            ttr += 1
+        '''
+
+        #threshold mista
+        if rank_sorted[0][1] <= 2.3:
+            if trueClass < num_classes - intrusi and trueClass == int(rank_sorted[0][0]):
+                ttr += 1
+            elif trueClass >= num_classes - intrusi:
+                ftr += 1
+        else:
+            if rank_sorted[0][1] < thresholds[int(rank_sorted[0][0])] + standard[int(rank_sorted[0][0])]   and trueClass < num_classes - intrusi and trueClass == int(rank_sorted[0][0]):
+                ttr += 1
+            elif rank_sorted[0][1] < thresholds[int(rank_sorted[0][0])] + standard[int(rank_sorted[0][0])]  and trueClass >= num_classes - intrusi:
+                ftr += 1
+
+        #threshold fissa
+        '''
+        if rank_sorted[0][1] <= 2.6 and trueClass >= num_classes - intrusi:
+            ftr += 1
+        if rank_sorted[0][1] <= 2.6 and trueClass < num_classes - intrusi and trueClass == int(rank_sorted[0][0]):
+            ttr += 1
+        '''
+
+    target_avg =[]
+    nontarget_avg =[]
+
+    #scrivo un report con le varie ifnormazioni per ogni classe: threshold e risultati
+    for label in range(num_classes):
+        somma = 0
+        for result in results[label]:
+            somma +=result
+        x.write("res: " + str(somma/len(results[label])))
+        x.write(", thr: " + str(thresholds[int(label)]))
+        x.write(", label: " + str(label) + "\n")
+        if label < num_classes - intrusi:
+            target_avg.append(somma / len(results[label])/thresholds[int(label)])
+        else:
+            nontarget_avg.append(somma / len(results[label])/thresholds[int(label)])
+    x.write("media 1:" + str(sum(target_avg)/len(target_avg)))
+    x.write("\n media 2:" + str(sum(nontarget_avg)/len(nontarget_avg)))
+
+    ttr = ttr/dim_target_images
+    ftr = ftr/dim_non_target_images
+    return ttr, ftr
+
 def plot_confusion_matrix(cm, classes,
                           normalize=False,
                           title='Confusion matrix',
@@ -215,3 +331,4 @@ def plot_confusion_matrix(cm, classes,
     plt.colorbar(im, cax=cax)
     fig.savefig("conf_matrix.png")
     plt.show()
+  

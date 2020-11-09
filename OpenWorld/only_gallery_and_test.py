@@ -90,6 +90,7 @@ num_classes_test = 100
 img_size = [224, 224]
 num_channels = 3
 frames_gallery = 10
+intrusi = 5
 
 
 
@@ -445,6 +446,11 @@ for hp in set_params:
 
         gallery_true_class = np.argmax(gallery_full_batch, axis=1)
 
+        #calcola matrice delle distanze intra gallery
+        gallery_intra_distance = compute_distance_intra_gallery(gallery_features, gallery_true_class, frames_gallery)
+
+        #calcola i thresholds adattivi
+        thresholds, standard = compute_adpative_thresholds(gallery_intra_distance, gallery_true_class, num_classes_test, frames_gallery)
         # TEST PHASE
         # tf.reset_default_graph()
         # saver = tf.train.import_meta_graph(sess, "/content/drive/My Drive/RCFusionGPU/bestmodel/model.meta")
@@ -475,6 +481,11 @@ for hp in set_params:
         dist_min = dist_matrix_avg(dist_matrix, frames_gallery)
         #dist_min = dist_matrix_min(dist_matrix, frames_gallery)
 
+        ttr, ftr = compute_ttr_ftr(full_label, dist_min, thresholds, num_classes, intrusi, standard)
+        print("ttr = ", ttr)
+        print("ftr = ", ftr)
+        print("standard:", standard)
+
         batchMatrix = defineImageRank1(dist_min, full_label)
         classList, num_of_frames = countTry(batchMatrix, num_classes_test)
         values = cmc_values(classList, num_of_frames)
@@ -487,6 +498,7 @@ for hp in set_params:
         for i in range(0, len(full_label)):
             y_true.append(batchMatrix[i][num_classes_test])  # classe vera
             y_pred.append(batchMatrix[i][0])  # classe predetta
+
 
         test_acc = accuracy_score(y_true, y_pred)
         class_names = []
