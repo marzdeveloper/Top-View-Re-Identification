@@ -20,6 +20,7 @@ This network is used for top-view person re-identification, it has been tested o
 3. csv and txt for tests
 4. Preprocessing script
 5. Custom RCFusion network
+6. Open World
 
 And other utility files that helped us to get the job done.
 
@@ -60,6 +61,13 @@ To run the network in colab run Colab.ipynb: this file contains the instructions
 Before starting the network some paramethers have to be specified:
 - If you are using .png frames (such as RealShop dataset), you have to be sure to import ImageDataHandler from image_data_handler_joint_multimodal_png
 - If you are using .jpg frames (such as TVPR2 dataset), you have to be sure to import ImageDataHandler from image_data_handler_joint_multimodal_jpg
+
+## 6. Open World
+In the folder Create txt openworld text there are some script, to use when train, validation and gallery are alreary created, to create txt test files with a selecatble number of intruders get randomically by the dataset csv.
+In the same folder there are also scripts to create test files with intruders from zero, without having train, validation and gallery alreary created.
+There are 2 script to plot TTR/FTR graphic and plot histogram comparsion between gallery and test set with intruders.
+In particular there is utils.py which contains all the functions used to generate adaptive and standard thresholds and only_gallery_and_test.py to make open world test with intruders and compute ttr and ftr.
+
 
 ## RealShop path settings:
 
